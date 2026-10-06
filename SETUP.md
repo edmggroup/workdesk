@@ -32,7 +32,7 @@ Browser (index.html)  ⇄  Google Apps Script web app  ⇄  Google Sheet in your
 
 In the Apps Script editor, choose **setUpTriggers** from the function dropdown and click **Run**. This installs:
 
-- **Morning digest**: an hourly check that sends one email at the hour you pick in *Settings → Reminders & email*, and only when there is something to report. If you change the hour in the app, it takes effect from the next hour; you don't need to touch Apps Script again.
+- **Morning digest**: an email in the same layout as the Research Group Logbook (navy masthead, status chip, detail card, italic sign-off). It is sent by an hourly check that sends one email at the hour you pick in *Settings → Reminders & email*, and only when there is something to report. If you change the hour in the app, it takes effect from the next hour; you don't need to touch Apps Script again.
 - **Nightly backup**: a dated JSON copy of everything goes to the Drive folder **Faculty Workdesk backups** around 2 am. Copies are kept for 45 days.
 
 To check that email works, run **testDigest**.
@@ -56,9 +56,15 @@ The `SETUP_KEY` is **not** in this file. It stays in Code.gs only.
 
 **GitHub Pages:** create a new repository and upload `index.html`, `manifest.json`, `sw.js` and the `icons/` folder. Then go to **Settings → Pages → Deploy from branch → main / root**. Your link will look like `https://<you>.github.io/<repo>/`.
 
-**First launch:** the app asks for your name, department, reminder email, the **setup key** and a **PIN** (6 or more digits). After that, only the PIN is needed. Tick *Keep me signed in* on your own phone and laptop.
+**First launch:** the app asks for your name, department, reminder email, the **setup key** and a **PIN** (4 or more digits). After that, only the PIN is needed. Tick *Keep me signed in* on your own phone and laptop.
 
-**Install on a phone:** open the link in Chrome (Android) and choose **Install app**, or in Safari (iPhone) choose **Share → Add to Home Screen**.
+**Install on a phone:** open your GitHub Pages link in Chrome (Android) and choose **⋮ → Install app**, or in Safari (iPhone) choose **Share → Add to Home Screen**. The app also has **Install app** in the account menu (top right) and a checker under **Settings → App & security → Check why it isn’t installing**.
+
+Why installing usually fails:
+- **The try-out link from Claude, or index.html opened from storage.** Neither can be installed. Only the published `https://…github.io/…` link can.
+- **The link was opened from WhatsApp, Gmail or Instagram.** These open links in a built-in viewer that cannot install apps. Tap ⋮ → *Open in Chrome* first.
+- **Files missing.** `manifest.json`, `sw.js` and the whole `icons/` folder must sit next to `index.html` in the repository.
+- **First visit.** Chrome sometimes needs one reload after the first visit before it offers *Install*.
 
 ---
 
@@ -74,7 +80,9 @@ The `SETUP_KEY` is **not** in this file. It stays in Code.gs only.
 ## How saving works
 
 - Each change is sent as a single record ("add/update this diary entry"), never as a whole list. Editing on your phone and your laptop at the same time cannot overwrite the other device's work. If the same record is edited on both, the later edit wins.
-- Changes wait in a queue on the device and retry automatically until the sheet confirms them, so a dropped connection loses nothing. The status at the top shows *All changes saved* or *N changes waiting to sync*.
+- Changes wait in a queue on the device and retry quietly in the background until the sheet confirms them, so a dropped connection loses nothing.
+- **Instant open:** the last copy of your data is kept on the device. The app opens straight from it (your PIN is checked against a fingerprint stored on the device), then refreshes from the sheet in the background.
+- **Open a backup file:** on the sign-in screen, or under **Backup & restore**, any `.json` backup opens straight away, read-only, even offline and without the backend.
 - Long lists are split across several cells automatically. A Google Sheets cell holds at most 50,000 characters, which a few years of work-diary entries would otherwise exceed.
 - **Restore** in Settings writes a *before-restore* snapshot to Drive first.
 
@@ -83,7 +91,7 @@ The `SETUP_KEY` is **not** in this file. It stays in Code.gs only.
 ## Updating later
 
 - **index.html**: change `app-build` (and `app-version` if you like) in the `<head>`, then upload. Open copies will show *A newer version is available*.
-- **Code.gs**: after editing, choose **Deploy → Manage deployments → ✎ → Version: New version → Deploy**. The URL stays the same.
+- **Code.gs**: after editing, choose **Deploy → Manage deployments → ✎ → Version: New version → Deploy**. The URL stays the same. Then run **setUpTriggers** once more. This is needed for the v1.2 update, because the trigger functions were renamed.
 
 ## Troubleshooting
 
@@ -92,6 +100,7 @@ The `SETUP_KEY` is **not** in this file. It stays in Code.gs only.
 | "Unauthorized (APP_KEY mismatch)" | `APP_KEY` differs between Code.gs and index.html, or Code.gs was edited without a new deployment version |
 | "Change SETUP_KEY in Code.gs…" | You left the default setup key. Change it and redeploy |
 | Couldn't reach the backend | The URL doesn't end in `/exec`, or the deployment access isn't *Anyone* |
+| Phone won't install the app | See *Install on a phone* above, or use Settings → App & security → *Check why it isn’t installing* |
 | No morning email | `setUpTriggers` was never run; no email set in Settings → Profile; the daily digest is switched off; or there was nothing to report that day (run `testDigest` to check) |
 | Timetable shows no classes | The date is outside the semester's start/end, after its *last teaching day*, a holiday, or covered by a schedule entry marked *regular classes suspended* |
 | Day order looks wrong | Check holidays and suspended days. A circular such as "Saturday follows Day 3" goes in as a schedule entry using *This day follows timetable of* |

@@ -18,7 +18,9 @@ A private web app for the day-to-day work of a university professor: the semeste
 | **Administration** | Responsibilities and in-charges, committees, meetings and minutes (create action items straight from a meeting), action items, and one-off or repeating reminders |
 | **Dashboard** | Today's classes with one-click logging; items that need attention; the semester week and teaching days left; KPI tiles; the next 14 days; syllabus coverage; research pipeline; project progress against time elapsed |
 | **Reminders** | Per category, on/off and how many days ahead. They show in the bell and on the dashboard, and arrive as a **morning email digest**, with a week preview on Mondays. The app and the email use the same code, so they always agree |
-| **Data** | JSON backup and restore, everything exported to Excel, calendar export (.ics) for Google Calendar or Outlook, nightly Drive backups, and sample data you can remove in one click |
+| **Reports** | Built like the logbook's Reports page. *Activity report* for any period (activity summary, a teaching summary per course, then every section), *By course* (syllabus coverage, diary, extra classes, evaluations) and *By section*. Print or save as PDF, or download as text, CSV or Excel. Each report ends with "End of Report — system-generated, no signature required" |
+| **Documents & links** | Attach Google Drive or OneDrive share links to responsibilities, committees, meetings, action items, projects, evaluations, exam duties and other records. Responsibilities also have a paperwork checklist with due dates, which feeds into your reminders |
+| **Data** | JSON backup and restore, instant open from the copy kept on the device, opening any backup file read-only, everything exported to Excel, calendar export (.ics) for Google Calendar or Outlook, nightly Drive backups, and sample data you can remove in one click |
 
 ## Files
 

@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-10-06-1">
-<meta name="app-version" content="1.0">
+<meta name="app-build" content="2026-10-06-5">
+<meta name="app-version" content="1.2">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -125,8 +125,10 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.45}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand-mark{width:30px;height:30px;border-radius:7px;background:#fff;color:#152A46;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12.5px;flex-shrink:0}
 .brand-name{font-weight:650;font-size:16px;line-height:1.15;white-space:nowrap}
-.brand-sub{font-size:11px;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px}
-.search{position:relative;flex:1;max-width:380px;margin-left:auto}
+.brand-sub{font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.3;max-width:560px;white-space:normal}
+.brand{flex-shrink:1}
+.search{min-width:180px}
+.search{position:relative;flex:1;max-width:340px;margin-left:auto}
 .search input{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:7px 12px;color:#fff;font-size:14.5px}
 .search input::placeholder{color:rgba(255,255,255,.55)}
 .search input:focus{outline:none;background:rgba(255,255,255,.16)}
@@ -139,18 +141,41 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.45}
 .tb-btn{position:relative;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:8px;padding:6px 10px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
 .tb-btn:hover{background:rgba(255,255,255,.16)}
 .tb-badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:#E5484D;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.acct{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:20px;padding:3px 10px 3px 3px;font-size:13px;font-weight:600}
+.acct:hover{background:rgba(255,255,255,.16)}
+.avatar{width:26px;height:26px;border-radius:50%;background:#fff;color:#152A46;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.acct .an{max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu .mhead{padding:8px 10px 10px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.menu .mhead b{display:block;font-size:14px}.menu .mhead span{font-size:12px;color:var(--ink-faint)}
+.menu .danger{color:var(--bad)}
+.menu hr{border:none;border-top:1px solid var(--border);margin:4px 0}
+.signout{background:none;border:1px solid rgba(255,255,255,.28);color:#fff;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;display:inline-flex;gap:6px;align-items:center}
+.signout:hover{background:rgba(255,255,255,.12)}
+.ro-banner{background:var(--navy-wash);color:var(--ink);font-size:13px;padding:8px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .sync{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap}
 .sync.warn{color:#FFD58A}
 .menu-btn{display:none}
 .layout{display:flex;align-items:flex-start}
-.sidebar{width:218px;flex-shrink:0;padding:12px 10px 40px;position:sticky;top:51px;height:calc(100vh - 51px);overflow:auto;background:var(--surface);border-right:1px solid var(--border)}
-.nav-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);margin:14px 9px 4px}
-.nav-label:first-child{margin-top:2px}
-.nav{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:6px 9px;border-radius:6px;border:none;background:none;font-size:13.5px;font-weight:500;color:var(--ink-soft);margin-bottom:1px}
-.nav .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--border-strong)}
-.nav .cnt{margin-left:auto;font-size:11px;font-weight:700;padding:1px 6px;border-radius:9px;background:var(--bad-wash);color:var(--bad)}
+.sidebar{width:228px;flex-shrink:0;padding:10px 8px 16px;position:sticky;top:51px;height:calc(100vh - 51px);overflow-y:auto;scrollbar-width:none;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:1px}
+.sidebar::-webkit-scrollbar{display:none}
+.nav{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:7px 10px;border-radius:7px;border:none;background:none;font-size:13.5px;font-weight:500;color:var(--ink-soft);flex-shrink:0}
+.nav .ni{width:17px;height:17px;flex-shrink:0;opacity:.85}
+.nav .nl{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .cnt{font-size:11px;font-weight:700;padding:1px 6px;border-radius:9px;background:var(--bad-wash);color:var(--bad)}
 .nav.active{background:var(--navy-wash);color:var(--ink);font-weight:650}
-.nav:hover:not(.active){background:var(--muted-wash)}
+.nav.active .ni{opacity:1;color:var(--navy)}
+:root[data-theme="dark"] .nav.active .ni{color:#9DBBE6}
+.nav:hover:not(.active){background:var(--muted-wash);color:var(--ink)}
+.nav.ghead.has-active{color:var(--ink);font-weight:600}
+.chev{flex-shrink:0;transition:transform .18s;opacity:.6}
+.ngrp.open .chev{transform:rotate(180deg)}
+.gitems{display:none}
+.ngrp.open .gitems{display:block;padding:2px 0 4px}
+.nav.sub{padding:6px 10px 6px 37px;font-size:13px;position:relative}
+.nav.sub:before{content:"";position:absolute;left:19px;top:0;bottom:0;border-left:1px solid var(--border)}
+.nav.sub.active:before{border-left:2px solid var(--navy)}
+.side-foot{margin-top:auto;padding:12px 10px 0;font-size:11px;color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
 main{flex:1;min-width:0;padding:24px 30px 70px}
 .local-banner{background:var(--warn-wash);color:var(--warn);font-size:13px;padding:8px 20px;border-bottom:1px solid var(--border)}
 @media (max-width:980px){
@@ -163,7 +188,8 @@ main{flex:1;min-width:0;padding:24px 30px 70px}
   .topbar{padding:9px 12px;gap:8px}
   .search{max-width:none}
 }
-@media (max-width:560px){ .brand-name{display:none} .tb-btn .lbl{display:none} }
+@media (max-width:560px){ .brand-name{display:none} .tb-btn .lbl,.signout .lbl{display:none} .acct .an{display:none} .acct{padding:3px} }
+@media (max-width:980px){ .acct .an{display:none} }
 
 /* ---------- page ---------- */
 .ph{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
@@ -221,7 +247,7 @@ table.t{width:100%;border-collapse:collapse;font-size:13.5px}
 button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .tile .n{font-size:26px;font-weight:700;color:var(--tc,var(--ink));line-height:1.1;font-variant-numeric:tabular-nums}
 .tile .l{font-size:12px;font-weight:600;color:var(--ink-soft);margin-top:3px}
-.tile .s{font-size:11.5px;color:var(--ink-faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .s{font-size:11.5px;color:var(--ink-faint);margin-top:2px;line-height:1.35;min-height:2.7em;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
 /* ---------- dashboard ---------- */
 .hello{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-bottom:16px}
@@ -333,6 +359,69 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
   main{padding:0} body{background:#fff}
 }
 
+.lk-row{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.4fr) 30px;gap:6px;align-items:center}
+@media (max-width:600px){.lk-row{grid-template-columns:minmax(0,1fr) 30px}.lk-row .inp[type=url]{grid-column:1}}
+.links{display:inline-flex;flex-wrap:wrap;gap:4px}
+.lk{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 8px 2px 3px;border-radius:10px;background:var(--muted-wash);color:var(--ink);text-decoration:none;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lk b{font-size:10px;font-weight:700;padding:1px 5px;border-radius:7px;background:var(--surface);color:var(--ink-soft)}
+.lk.drive b{color:#1E8E3E}.lk.onedrive b{color:#0F6CBD}.lk.dropbox b{color:#0061FE}
+.lk:hover{background:var(--navy-wash)}
+
+/* ---------- reports ---------- */
+.rtypes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.rtypes{grid-template-columns:minmax(0,1fr)}}
+.rtype{text-align:left;border:1px solid var(--border-strong);background:var(--surface);border-radius:9px;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.rtype b{font-size:14px}.rtype small{font-size:12.5px;color:var(--ink-soft);line-height:1.4}
+.rtype.active{border-color:var(--navy);box-shadow:0 0 0 1px var(--navy) inset;background:var(--navy-wash)}
+.chk{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink-soft);margin-top:10px}
+.report-doc{background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-sm);padding:32px 36px}
+@media (max-width:600px){.report-doc{padding:20px 16px}}
+.report-head{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.report-eyebrow{font-size:20px;font-weight:650;letter-spacing:-.01em}
+.report-who{font-size:15px;font-weight:600;margin-top:6px}
+.report-meta{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
+.report-group{font-size:15px;font-weight:700;margin:30px 0 4px;padding-bottom:6px;border-bottom:1px dashed var(--border-strong)}
+.report-student-name{font-size:19px;font-weight:700;margin:0 0 12px}
+.report-section-title{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--navy);margin:22px 0 10px}
+:root[data-theme="dark"] .report-section-title{color:#9DBBE6}
+.report-count{font-weight:600;color:var(--ink-faint);margin-left:4px}
+.report-empty{font-size:13px;color:var(--ink-faint);font-style:italic}
+.report-tw{overflow-x:auto}
+.report-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:6px}
+.report-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);border-bottom:1.5px solid var(--border-strong);padding:6px 8px}
+.report-table td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.report-table tr.tot td{border-top:1.5px solid var(--border-strong)}
+.report-links{font-size:11.5px;margin-top:3px}
+.report-kv{display:grid;grid-template-columns:170px minmax(0,1fr);gap:4px 12px;font-size:13.5px;margin:0 0 6px}
+.report-kv dt{color:var(--ink-faint);font-weight:600}.report-kv dd{margin:0}
+.report-end{margin-top:34px;padding-top:18px;border-top:1px solid var(--border);text-align:center}
+.report-end-rule{font-size:13px;font-weight:600;letter-spacing:.04em}
+.report-end-note{font-size:12px;color:var(--ink-soft);margin-top:6px;font-style:italic}
+@media print{
+  body.printing-report *{visibility:hidden}
+  body.printing-report #reportPrintArea, body.printing-report #reportPrintArea *{visibility:visible}
+  body.printing-report #reportPrintArea{position:absolute;left:0;top:0;width:100%}
+  body.printing-report{background:#fff}
+  .report-doc{border:none;box-shadow:none;padding:0;background:#fff;color:#111}
+  .report-table{font-size:11px}.report-tw{overflow:visible}
+  .report-table tr,.report-end{break-inside:avoid}
+  .local-banner,.ro-banner{display:none!important}
+}
+
+.signout{white-space:nowrap;flex-shrink:0}
+.tb-actions{flex-shrink:0}
+.msearch{display:none}
+@media (max-width:1280px){ .acct .an{display:none} .acct{padding:3px} }
+@media (max-width:640px){
+  .search{display:none;position:absolute;left:10px;right:10px;top:100%;margin:6px 0 0;max-width:none;min-width:0;z-index:70}
+  .topbar.srch-open .search{display:block}
+  .topbar .search input{background:#152A46 !important;border:1px solid rgba(255,255,255,.4);box-shadow:0 6px 18px rgba(0,0,0,.25);padding:10px 12px}
+  .msearch{display:inline-flex}
+  .brand{flex:1}
+  .tb-actions{gap:5px}
+  .tb-btn,.signout{padding:6px 8px}
+}
+
 </style>
 </head>
 <body>
@@ -359,11 +448,14 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
     <div class="brand" onclick="go('dashboard')" style="cursor:pointer"><div class="brand-mark">FW</div><div><div class="brand-name">Faculty Workdesk</div><div class="brand-sub" id="brandSub"></div></div></div>
     <div class="search"><input id="q" placeholder="Search everything…" oninput="runSearch(this.value)" onfocus="runSearch(this.value)" autocomplete="off"><div class="search-panel" id="searchPanel"></div></div>
     <div class="tb-actions">
-      <span class="sync" id="sync"></span>
+      <button class="tb-btn msearch" onclick="const tb=document.querySelector('.topbar');tb.classList.toggle('srch-open');if(tb.classList.contains('srch-open'))$('#q').focus()" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></button>
       <div id="qaWrap" style="position:relative"><button class="tb-btn" onclick="toggleQuick()" aria-label="Quick add"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 3v10M3 8h10"/></svg><span class="lbl">New</span></button></div>
       <button class="tb-btn" onclick="openDrawer()" aria-label="Reminders"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 11V7a4 4 0 118 0v4l1.5 1.5h-11L4 11zM6.5 14a1.5 1.5 0 003 0"/></svg><span class="tb-badge" id="bellBadge" style="display:none"></span></button>
+      <div id="acctWrap" style="position:relative"><button class="acct" onclick="toggleAccount()" aria-label="Account"><span class="avatar" id="avatar">FW</span><span class="an" id="acctName"></span></button></div>
+      <button class="signout" onclick="signOut()" title="Sign out"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 3H3v10h3M10 5l3 3-3 3M13 8H6"/></svg><span class="lbl">Sign out</span></button>
     </div>
   </header>
+  <div class="ro-banner hidden" id="roBanner"></div>
   <div class="local-banner hidden" id="localBanner">Local mode — your data is saved in this browser only. Connect the Google Sheet backend (SETUP.md) to use it on all your devices and get reminder emails.</div>
   <div class="layout">
     <nav class="sidebar" id="sidebar"></nav>
@@ -632,7 +724,10 @@ var WD = (function () {
     function on(c) { return opts.allCats || R[c].on; }
     function want(c, date, open) {
       if (!validDate(date)) return false;
-      if (open && date < today) return opts.includeOverdue !== false && date >= addDays(today, -365);
+      if (open && date < today) {
+        if (ignoreLead) return date >= from && date <= to; // calendar / export: show what falls in the range
+        return opts.includeOverdue !== false && date >= addDays(today, -365);
+      }
       if (date < from || date > to) return false;
       if (ignoreLead) return true;
       return diffDays(today, date) <= R[c].lead;
@@ -695,14 +790,24 @@ var WD = (function () {
     // reminders
     list(data, 'reminders').forEach(function (r) {
       if (r.done && (r.repeat || 'None') === 'None') return;
-      var d = nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : from);
+      if (!on('reminder')) return;
+      var rep = r.repeat || 'None', open = rep === 'None';
+      var detail = (rep !== 'None' ? rep : '') + (r.category ? (rep !== 'None' ? ' · ' : '') + r.category : '');
+      if (ignoreLead && !open) {
+        // calendar view: every occurrence in the range, not just the next one
+        var occ = nextOccurrence({ date: r.date, repeat: rep }, from), guard = 0;
+        while (occ && occ <= to && guard++ < 400) {
+          if (!(r.lastDone && occ <= r.lastDone)) items.push({ date: occ, time: r.time || '', cat: 'reminder', title: r.title, detail: detail, ref: { coll: 'reminders', id: r.id }, overdue: false, occurrence: occ });
+          var nx = nextOccurrence({ date: r.date, repeat: rep }, addDays(occ, 1)); if (!nx || nx <= occ) break; occ = nx;
+        }
+        return;
+      }
+      var d = nextOccurrence(r, open ? r.date : from);
       if (!d) return;
       var lead = (r.lead !== undefined && r.lead !== '' && !isNaN(+r.lead)) ? +r.lead : R.reminder.lead;
-      if (!on('reminder')) return;
-      var open = (r.repeat || 'None') === 'None';
-      if (open && d < today) { if (opts.includeOverdue === false) return; }
+      if (open && d < today) { if (ignoreLead ? (d < from || d > to) : opts.includeOverdue === false) return; }
       else if (d < from || d > to || (!ignoreLead && diffDays(today, d) > lead)) return;
-      items.push({ date: d, time: r.time || '', cat: 'reminder', title: r.title, detail: (r.repeat && r.repeat !== 'None' ? r.repeat : '') + (r.category ? (r.repeat && r.repeat !== 'None' ? ' · ' : '') + r.category : ''), ref: { coll: 'reminders', id: r.id }, overdue: open && d < today, occurrence: d });
+      items.push({ date: d, time: r.time || '', cat: 'reminder', title: r.title, detail: detail, ref: { coll: 'reminders', id: r.id }, overdue: open && d < today, occurrence: d });
     });
     // research
     list(data, 'reviews').forEach(function (r) {
@@ -721,6 +826,10 @@ var WD = (function () {
     list(data, 'plans').forEach(function (p) {
       if (p.status === 'Completed' || p.status === 'Dropped') return;
       (p.milestones || []).forEach(function (m, i) { if (!m.done) push('plan', m.due, '', m.text, 'Plan: ' + (p.title || ''), { coll: 'plans', id: p.id, sub: i }, true); });
+    });
+    list(data, 'responsibilities').forEach(function (r) {
+      if (r.status === 'Completed') return;
+      (r.paperwork || []).forEach(function (m, i) { if (!m.done) push('action', m.due, '', m.text, 'Paperwork · ' + (r.title || ''), { coll: 'responsibilities', id: r.id, sub: i }, true); });
     });
     list(data, 'projects').forEach(function (p) {
       if (['Completed', 'Rejected', 'Closed'].indexOf(p.status) !== -1) return;
@@ -824,6 +933,8 @@ const SCHEMA = {
       {k:'suspendsClasses', label:'Regular classes suspended?', type:'select', opts:['No','Yes'], def:'No', help:'Choose Yes for exam weeks, fests etc. — the timetable will skip these days.'},
       {k:'followsDay', label:'This day follows timetable of', type:'select', opts:()=>['', ...DAY_OPTIONS()], help:'Use for “Saturday follows Monday’s timetable” type circulars.'},
       {k:'notes', label:'Notes', type:'textarea'}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','endDate','title','category','suspendsClasses'], sort:['date','asc'] },
 
   holidays: { label:'Holidays', one:'holiday',
@@ -844,6 +955,8 @@ const SCHEMA = {
       {k:'students', label:'No. of students', type:'number'},
       {k:'units', label:'Syllabus units (one per line: Title | hours)', type:'textarea', full:true, rows:6, ph:'Unit 1: Crystal structure | 12\nUnit 2: Lattice dynamics | 12\nUnit 3: Band theory | 12'},
       {k:'notes', label:'Notes', type:'textarea'}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['code','title','kind','classLabel','semesterId','credits'], sort:['code','asc'] },
 
   slots: { label:'Timetable slots', one:'timetable slot',
@@ -866,6 +979,8 @@ const SCHEMA = {
       {k:'kind', label:'Type', type:'select', opts:['Extra','Additional','Remedial','Make-up (for a cancelled class)','Substitution (for a colleague)','Bridge course'], def:'Extra'},
       {k:'room', label:'Room / lab', type:'text'},
       {k:'reason', label:'Reason / note', type:'text', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','start','end','courseId','kind','room'], sort:['date','desc'] },
 
   diary: { label:'Work diary', one:'diary entry',
@@ -883,6 +998,8 @@ const SCHEMA = {
       {k:'total', label:'Students on roll', type:'number'},
       {k:'hours', label:'Hours (auto from time)', type:'number', step:'0.25'},
       {k:'remarks', label:'Remarks', type:'textarea', full:true, rows:2}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','start','courseId','kind','status','unit','topic','present'], sort:['date','desc'] },
 
   examDuties: { label:'Exam duties', one:'exam duty',
@@ -895,6 +1012,8 @@ const SCHEMA = {
       {k:'venue', label:'Venue / block / room', type:'text'},
       {k:'status', label:'Status', type:'select', opts:['Assigned','Completed','Cancelled'], def:'Assigned'},
       {k:'notes', label:'Notes', type:'textarea'}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','start','dutyType','exam','venue','status'], sort:['date','asc'] },
 
   evaluations: { label:'Evaluations', one:'evaluation',
@@ -908,6 +1027,8 @@ const SCHEMA = {
       {k:'done', label:'Evaluated so far', type:'number'},
       {k:'status', label:'Status', type:'select', opts:['Received','In progress','Completed','Marks uploaded'], def:'Received'},
       {k:'notes', label:'Notes', type:'textarea'}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['due','paper','exam','evalType','progress','status'], sort:['due','asc'] },
 
   mentees: { label:'Mentees', one:'mentee',
@@ -934,6 +1055,8 @@ const SCHEMA = {
       {k:'actions', label:'Agreed actions', type:'textarea', full:true, rows:2},
       {k:'followUp', label:'Follow-up on', type:'date'},
       {k:'followUpDone', label:'Follow-up done', type:'select', opts:['','Yes']}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','time','kind','menteeIds','status','followUp'], sort:['date','desc'] },
 
   plans: { label:'Research plans', one:'research plan',
@@ -944,6 +1067,8 @@ const SCHEMA = {
       {k:'status', label:'Status', type:'select', opts:['Planned','In progress','On hold','Completed','Dropped'], def:'Planned'},
       {k:'milestones', label:'Milestones', type:'checklist', full:true},
       {k:'notes', label:'Notes', type:'textarea', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['title','horizon','target','progress','status'], sort:['target','asc'] },
 
   publications: { label:'Publications', one:'publication',
@@ -962,6 +1087,8 @@ const SCHEMA = {
       {k:'doi', label:'DOI', type:'text'},
       {k:'link', label:'Manuscript / article link', type:'url'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['title','venue','kind','status','submitted','indexing'], sort:['submitted','desc'] },
 
   collaborations: { label:'Collaborations', one:'collaboration',
@@ -975,6 +1102,8 @@ const SCHEMA = {
       {k:'status', label:'Status', type:'select', opts:['Active','Proposed','Inactive','Closed'], def:'Active'},
       {k:'email', label:'Email', type:'email'},
       {k:'outcomes', label:'Outcomes (papers, visits, samples, proposals)', type:'textarea', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['name','institution','country','kind','area','status'], sort:['name','asc'] },
 
   conferences: { label:'Conferences & workshops', one:'conference / workshop',
@@ -993,6 +1122,8 @@ const SCHEMA = {
       {k:'paperTitle', label:'Paper / talk title', type:'text', full:true},
       {k:'link', label:'Event link / certificate', type:'url'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['start','title','kind','role','venue','status'], sort:['start','desc'] },
 
   reviews: { label:'Peer review & editorial', one:'review / editorial role',
@@ -1006,6 +1137,8 @@ const SCHEMA = {
       {k:'status', label:'Status', type:'select', opts:['Invited','Accepted','In progress','Submitted','Declined','Active','Completed'], def:'Invited'},
       {k:'link', label:'Link / certificate', type:'url'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['due','journal','role','manuscript','round','status'], sort:['due','desc'] },
 
   contacts: { label:'Researcher contacts', one:'researcher',
@@ -1047,6 +1180,8 @@ const SCHEMA = {
       {k:'milestones', label:'Milestones / deliverables', type:'checklist', full:true},
       {k:'log', label:'Progress log', type:'log', full:true},
       {k:'notes', label:'Notes', type:'textarea', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['title','agency','role','amount','start','end','progress','status'], sort:['start','desc'] },
 
   responsibilities: { label:'Responsibilities & in-charges', one:'responsibility',
@@ -1058,8 +1193,11 @@ const SCHEMA = {
       {k:'until', label:'Until', type:'date'},
       {k:'status', label:'Status', type:'select', opts:['Active','Completed'], def:'Active'},
       {k:'duties', label:'Routine duties', type:'textarea', full:true, ph:'Stock register every month; AMC follow-up…'},
+      {k:'paperwork', label:'Paperwork & submissions (with due dates — these are reminded)', type:'checklist', full:true, addLabel:'+ Add paperwork item'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
-    ], cols:['title','role','level','since','until','status'], sort:['since','desc'] },
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['title','role','level','paperworkProg','docs','status'], sort:['since','desc'] },
 
   committees: { label:'Committees', one:'committee',
     fields:[
@@ -1070,7 +1208,9 @@ const SCHEMA = {
       {k:'frequency', label:'Meets', type:'select', opts:['As needed','Weekly','Fortnightly','Monthly','Every semester','Annually'], def:'As needed'},
       {k:'status', label:'Status', type:'select', opts:['Active','Completed'], def:'Active'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
-    ], cols:['name','role','level','frequency','nextMeeting','status'], sort:['name','asc'] },
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['name','role','level','frequency','nextMeeting','docs','status'], sort:['name','asc'] },
 
   meetings: { label:'Committee meetings', one:'meeting',
     fields:[
@@ -1082,7 +1222,9 @@ const SCHEMA = {
       {k:'status', label:'Status', type:'select', opts:['Scheduled','Held','Cancelled'], def:'Scheduled'},
       {k:'agenda', label:'Agenda', type:'textarea', full:true},
       {k:'minutes', label:'Minutes / decisions', type:'textarea', full:true}
-    ], cols:['date','time','committeeId','title','venue','status'], sort:['date','desc'] },
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['date','time','committeeId','title','venue','docs','status'], sort:['date','desc'] },
 
   actions: { label:'Action items', one:'action item',
     fields:[
@@ -1092,7 +1234,9 @@ const SCHEMA = {
       {k:'status', label:'Status', type:'select', opts:['Open','In progress','Done'], def:'Open'},
       {k:'source', label:'Arising from', type:'text', ph:'IQAC meeting 12 Sep, Lab in-charge…'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
-    ], cols:['due','title','priority','source','status'], sort:['due','asc'] },
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['due','title','priority','source','docs','status'], sort:['due','asc'] },
 
   reminders: { label:'Reminders', one:'reminder',
     fields:[
@@ -1103,6 +1247,8 @@ const SCHEMA = {
       {k:'lead', label:'Start reminding (days before)', type:'number', min:0, help:'Leave blank to use the default from Settings.'},
       {k:'category', label:'Category', type:'select', opts:['','Teaching','Exams','Research','Projects','Administration','Personal']},
       {k:'notes', label:'Notes', type:'textarea', full:true}
+,
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['next','title','repeat','category','done'], sort:['date','asc'] }
 };
 
@@ -1110,7 +1256,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -1225,11 +1371,13 @@ const store = {
   },
 
   persistLocal(){
+    if(state.readonly) return;
     const snap = { data: state.data, settings: state.settings, at: Date.now() };
     LS.set(REMOTE ? 'wd_cache' : 'wd_local', snap);
   },
 
   async commit(op){
+    if(state.readonly){ toast('This is a backup file opened read-only. Use Backup & restore → Restore to make it your live data.', true); closeModal(); return; }
     this.applyLocal(op);
     this.persistLocal();
     if(REMOTE){ this.outbox.push(op); LS.set('wd_outbox', this.outbox); this.flush(); }
@@ -1259,7 +1407,7 @@ const store = {
       this.lastError = null;
     }catch(e){
       this.lastError = e.message;
-      if(e.code === 'AUTH'){ signOut(true); toast('Your PIN has changed or the session expired — please sign in again.', true); }
+      if(e.code === 'AUTH'){ LS.del('wd_pinchk'); signOut(true); toast('Your PIN has changed or the session expired — please sign in again.', true); }
       else setTimeout(() => this.flush(), 15000);
     }finally{ this.syncing = false; renderSync(); }
   },
@@ -1275,6 +1423,7 @@ const store = {
     // re-apply anything still waiting in the outbox on top of the fresh copy
     this.outbox.forEach(op => this.applyLocal(op));
     this.persistLocal();
+    if(state.auth && !LS.get('wd_pinchk', null)) pinCheck(state.auth).then(v => LS.set('wd_pinchk', v));
     if(this.outbox.length) this.flush();
   }
 };
@@ -1289,28 +1438,37 @@ function renderSync(){
   else { el.textContent = 'All changes saved'; el.className = 'sync'; el.title = ''; }
 }
 
-/* ============================ LOGIN ============================ */
+/* ============================ LOGIN ============================
+   Instant open: the last copy of your data is kept on this device. The
+   PIN is checked against a fingerprint stored locally (never the PIN or
+   its hash), the cached copy opens at once, and the fresh copy from the
+   Sheet replaces it a moment later.                                    */
+const pinCheck = h => sha('chk::' + h);
+function cachedSnap(){ return LS.get('wd_cache', null); }
+
 async function boot(){
+  state.readonly = false;
   document.documentElement.dataset.theme = LS.get('wd_theme', '') || '';
   if(!REMOTE){
     await store.load();
     if(!state.settings.profile.name) return renderLogin('local-setup');
+    if(LS.get('wd_local_locked', false)) return renderLogin('local-open');
     return enterApp();
   }
   const remembered = LS.get('wd_auth', null) || SS.get('wd_auth');
-  // show cached copy instantly while the fresh one loads
-  const cache = LS.get('wd_cache', null);
+  const cache = cachedSnap();
   if(remembered){
     state.auth = remembered;
-    if(cache){ store.applyLocal({ op:'replaceAll', data: cache.data, settings: cache.settings }); enterApp(); }
-    else renderLogin('loading');
+    if(cache){ store.applyLocal({ op:'replaceAll', data: cache.data, settings: cache.settings }); enterApp(); backgroundRefresh(); return; }
+    renderLogin('loading');
     try{ await store.load(); enterApp(); }
-    catch(e){
-      if(e.code === 'AUTH') { signOut(true); }
-      else if(!cache) renderLogin('pin', 'Could not reach the backend: ' + e.message);
-      else toast('Offline — showing the copy saved on this device.', true);
-    }
+    catch(e){ if(e.code === 'AUTH' || e.code === 'LOCKED') signOut(true); else renderLogin('pin', 'Could not reach the backend: ' + e.message); }
     return;
+  }
+  // Signed out but this device has a copy: show the PIN screen straight away (no network wait).
+  if(cache && LS.get('wd_pinchk', null)){
+    if(cache.settings) state.settings = WD.mergeSettings(cache.settings);
+    return renderLogin('pin');
   }
   renderLogin('loading');
   try{
@@ -1318,6 +1476,18 @@ async function boot(){
     renderLogin(j.pinSet ? 'pin' : 'setup', null, j);
   }catch(e){ renderLogin('error', e.message); }
 }
+
+async function backgroundRefresh(){
+  if(state.readonly) return;
+  try{ await store.load(); if(typeof safeToRerender !== 'function' || safeToRerender()) rerender(); }
+  catch(e){
+    if(e.code === 'AUTH') LS.del('wd_pinchk');
+    if(e.code === 'AUTH' || e.code === 'LOCKED'){ signOut(true); toast(e.code === 'LOCKED' ? e.message : 'Your PIN was changed on another device — please sign in again.', true); }
+    else { store.lastError = 'Offline — showing the copy saved on this device'; renderSync(); }
+  }
+}
+
+const openJsonLink = `<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:13.5px" class="muted">Have a backup file? <label class="linkbtn" style="cursor:pointer">Open it (.json)<input type="file" accept=".json,application/json" hidden onchange="openBackupFile(this.files[0])"></label> — read-only, works offline.</div>`;
 
 function renderLogin(mode, err, info){
   $('#app').style.display = 'none'; $('#login').style.display = 'flex';
@@ -1330,20 +1500,36 @@ function renderLogin(mode, err, info){
   if(mode === 'error'){
     c.innerHTML = `<div class="eyebrow">Connection problem</div><h2>Couldn’t reach the backend</h2>
       <div class="err">${esc(err)}</div><p class="muted">Check that the Apps Script is deployed with access “Anyone”, that DATA_API_URL ends in /exec, and that APP_KEY matches Code.gs. See SETUP.md → Troubleshooting.</p>
-      <button class="btn" onclick="boot()">Try again</button>`; return;
+      <button class="btn" onclick="boot()">Try again</button>${openJsonLink}`; return;
+  }
+  if(mode === 'local-open'){
+    c.innerHTML = `<div class="eyebrow">Signed out</div><h2>${esc(p.name || 'Faculty Workdesk')}</h2><p class="muted">Local mode — the data is in this browser.</p><button class="btn block" onclick="LS.del('wd_local_locked');enterApp()">Open my desk</button>${openJsonLink}`;
+    return;
   }
   if(mode === 'pin'){
     c.innerHTML = `<div class="eyebrow">Welcome back</div><h2>${esc((info && info.name) || p.name || 'Faculty Workdesk')}</h2>
       <p class="muted">Enter your PIN to open your desk.</p>${errHtml}
-      <form id="pinForm"><label class="f">PIN</label><input class="inp" id="pin" type="password" inputmode="numeric" autocomplete="current-password" autofocus>
+      <form id="pinForm"><label class="f" for="pin">PIN</label><input class="inp" id="pin" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12" style="font-size:22px;letter-spacing:.4em;text-align:center" autofocus>
       <label style="display:flex;gap:8px;align-items:center;margin:12px 0 16px;font-size:14px"><input type="checkbox" id="remember" checked> Keep me signed in on this device</label>
-      <button class="btn block" type="submit">Open</button></form>`;
+      <button class="btn block" type="submit">Open</button></form>${openJsonLink}`;
+    const pinEl = $('#pin');
+    // 4-digit PINs open as soon as the fourth digit is typed when this device knows the PIN fingerprint
+    pinEl.addEventListener('input', async () => { if(pinEl.value.length === 4 && LS.get('wd_pinchk', null) && (await pinCheck(await pinHash(pinEl.value))) === LS.get('wd_pinchk', null)){ const b = $('#pinForm button[type=submit]'); if(b && !b.disabled) b.click(); } });
     $('#pinForm').onsubmit = async ev => {
-      ev.preventDefault(); const btn = ev.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Checking…';
-      state.auth = await pinHash($('#pin').value.trim());
+      ev.preventDefault(); const btn = ev.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Opening…';
+      const h = await pinHash(pinEl.value.trim());
+      const remember = $('#remember').checked;
+      const cache = cachedSnap();
+      if(cache && LS.get('wd_pinchk', null) === await pinCheck(h)){
+        state.auth = h; if(remember) LS.set('wd_auth', h); else SS.set('wd_auth', h);
+        store.applyLocal({ op:'replaceAll', data: cache.data, settings: cache.settings });
+        enterApp(); backgroundRefresh(); return;
+      }
+      state.auth = h;
       try{
         await store.load();
-        if($('#remember').checked) LS.set('wd_auth', state.auth); else SS.set('wd_auth', state.auth);
+        LS.set('wd_pinchk', await pinCheck(h));
+        if(remember) LS.set('wd_auth', h); else SS.set('wd_auth', h);
         enterApp();
       }catch(e){ state.auth = null; renderLogin('pin', e.code === 'AUTH' || e.code === 'LOCKED' ? e.message : 'Could not sign in: ' + e.message, info); }
     };
@@ -1360,53 +1546,144 @@ function renderLogin(mode, err, info){
         <div class="full"><label class="f">Institution</label><input class="inp" name="institution" value="Christ University, Bengaluru"></div>
         <div class="full"><label class="f">Email for reminders</label><input class="inp" name="email" type="email"></div>
         ${remote ? `<div class="full"><label class="f">Setup key</label><input class="inp" name="setupKey" required></div>
-        <div><label class="f">Choose a PIN (6+ digits)</label><input class="inp" name="pin" type="password" inputmode="numeric" minlength="6" required></div>
+        <div><label class="f">Choose a PIN (4+ digits)</label><input class="inp" name="pin" type="password" inputmode="numeric" minlength="4" required></div>
         <div><label class="f">Repeat PIN</label><input class="inp" name="pin2" type="password" inputmode="numeric" required></div>` : ''}
         <div class="full"><button class="btn block" type="submit">Create my desk</button></div>
-      </form>`;
+      </form>${openJsonLink}`;
     $('#setupForm').onsubmit = async ev => {
       ev.preventDefault();
       const f = Object.fromEntries(new FormData(ev.target).entries());
       const profile = { name:f.name.trim(), designation:f.designation.trim(), department:f.department.trim(), institution:f.institution.trim(), email:f.email.trim() };
       if(!remote){ const s = WD.mergeSettings(state.settings); s.profile = profile; store.applyLocal({ op:'settings', value:s }); store.persistLocal(); return enterApp(); }
-      if(!/^\d{6,}$/.test(f.pin)) return renderLogin('setup', 'PIN must be at least 6 digits.');
+      if(!/^\d{4,}$/.test(f.pin)) return renderLogin('setup', 'PIN must be at least 4 digits.');
       if(f.pin !== f.pin2) return renderLogin('setup', 'The two PINs don’t match.');
       const hash = await pinHash(f.pin);
       try{
         const s = WD.mergeSettings({}); s.profile = profile;
         await store.api({ action:'setup', setupKey: f.setupKey.trim(), pinHash: hash, settings: s });
-        state.auth = hash; LS.set('wd_auth', hash);
+        state.auth = hash; LS.set('wd_auth', hash); LS.set('wd_pinchk', await pinCheck(hash));
         await store.load(); enterApp();
       }catch(e){ renderLogin('setup', e.message); }
     };
   }
 }
 
+/* Open a backup .json file as a read-only desk — no backend needed. */
+async function openBackupFile(file){
+  if(!file) return;
+  try{
+    const j = JSON.parse(await file.text());
+    if(!j || !j.data) throw new Error('This is not a Workdesk backup file.');
+    state.readonly = { name: file.name, at: j.exportedAt, data: j.data, settings: j.settings };
+    store.applyLocal({ op:'replaceAll', data: j.data, settings: j.settings || state.settings });
+    enterApp();
+    toast('Backup opened (read-only)');
+  }catch(e){ toast('Could not open that file: ' + e.message, true); }
+}
+function closeBackupView(){ state.readonly = false; boot(); }
+
+function forgetDevice(){
+  closeMenus();
+  openModal(`<div class="mh"><h2>Sign out and remove data from this device?</h2></div><div class="mb"><p>Use this on a shared or office computer. The copy of your data kept on this device for instant opening is deleted${REMOTE ? '. Everything stays safe in your Google Sheet; next time this device downloads it again after the PIN' : ' — <b>in local mode this deletes your only copy</b>, so download a backup first'}.</p></div><div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn danger" onclick="doForget()">Sign out & remove</button></div>`, true);
+}
+function doForget(){
+  closeModal();
+  ['wd_cache','wd_pinchk','wd_auth'].forEach(k => LS.del(k)); SS.del('wd_auth');
+  if(!REMOTE){ LS.del('wd_local'); LS.del('wd_local_locked'); }
+  if(store.outbox.length) toast('Some recent changes had not reached the Sheet yet; they were kept and will sync next time you sign in here.', true);
+  state.auth = null; WD.COLLECTIONS.forEach(c => state.data[c] = []); state.settings = WD.mergeSettings({});
+  boot();
+}
 function signOut(silent){
+  closeMenus();
   LS.del('wd_auth'); SS.del('wd_auth'); state.auth = null;
+  if(state.readonly){ state.readonly = false; }
+  if(!REMOTE && !silent) LS.set('wd_local_locked', true);
   if(!silent) toast('Signed out');
   boot();
 }
 
+/* ---------- account menu & install ---------- */
+function initials(n){ return (n || 'FW').replace(/^(dr|prof|mr|mrs|ms)\.?\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'FW'; }
+function closeMenus(){ ['#acctMenu', '#qaMenu'].forEach(s => { const m = $(s); if(m) m.remove(); }); }
+function toggleAccount(){
+  const m = $('#acctMenu'); if(m) return m.remove(); closeMenus();
+  const p = state.settings.profile;
+  $('#acctWrap').insertAdjacentHTML('beforeend', `<div class="menu" id="acctMenu"><div class="mhead"><b>${esc(p.name || 'Faculty Workdesk')}</b><span>${esc([p.designation, p.department].filter(Boolean).join(', ') || (REMOTE ? 'Connected to Google Sheet' : 'Local mode'))}</span></div>
+    <button onclick="closeMenus();go('settings')">Settings</button><button onclick="closeMenus();go('backup')">Backup & restore</button><button onclick="closeMenus();go('reports')">Reports</button>
+    <button onclick="closeMenus();installApp()">${isStandalone() ? 'Installed on this device ✓' : 'Install app on this device'}</button><button onclick="closeMenus();toggleTheme()">Switch light / dark</button>
+    ${REMOTE ? `<button onclick="closeMenus();changePin()">Change PIN</button>` : ''}<hr><button class="danger" onclick="signOut()">Sign out</button><button class="danger" onclick="forgetDevice()">Sign out & remove data from this device</button></div>`);
+}
+document.addEventListener('click', e => { const m = $('#acctMenu'); if(m && !e.target.closest('#acctWrap')) m.remove(); });
+
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+window.addEventListener('appinstalled', () => { deferredInstall = null; toast('Workdesk installed'); });
+function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+async function installApp(){
+  if(isStandalone()) return toast('You are already using the installed app.');
+  if(deferredInstall){ deferredInstall.prompt(); const r = await deferredInstall.userChoice.catch(() => ({})); deferredInstall = null; if(r && r.outcome === 'accepted') return; }
+  showInstallHelp();
+}
+async function showInstallHelp(){
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const inApp = /FBAN|FBAV|Instagram|Line\/|WhatsApp|GSA\/|; wv\)|LinkedInApp|Snapchat/i.test(ua);
+  const checks = [];
+  const add = (ok, label, fix) => checks.push(`<tr style="cursor:default"><td style="width:28px">${ok === null ? '…' : ok ? '<span style="color:var(--ok)">✓</span>' : '<span style="color:var(--bad)">✕</span>'}</td><td><b style="font-weight:600">${label}</b>${!ok && fix ? `<div class="faint" style="font-size:12.5px">${fix}</div>` : ''}</td></tr>`);
+  add(location.protocol === 'https:', 'Opened from the published https:// link', location.protocol === 'file:' ? 'You opened the file directly from storage. Install only works from the GitHub Pages (https) link.' : 'Open the GitHub Pages address that starts with https://.');
+  add(!/claude\.ai|claudeusercontent/.test(location.host) && window.top === window.self, 'Not inside a preview or another app', 'A preview link (such as the try-out copy in Claude) cannot be installed. Use your own GitHub Pages link.');
+  add(!inApp, 'Opened in a real browser', 'Links opened from WhatsApp, Gmail or Instagram open in a built-in viewer that cannot install apps. Tap ⋮ → “Open in Chrome” (or Safari on iPhone) first.');
+  let man = null; try{ const r = await fetch('manifest.json', { cache:'no-store' }); man = r.ok ? await r.json() : null; }catch(e){}
+  add(!!man, 'manifest.json found next to index.html', 'Upload manifest.json, sw.js and the icons folder to the same folder as index.html.');
+  let icon = false; try{ icon = (await fetch('icons/icon-512.png', { cache:'no-store' })).ok; }catch(e){}
+  add(icon, 'App icons found', 'Upload the whole icons/ folder (icon-192.png, icon-512.png…).');
+  const sw = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration().catch(() => null) : null;
+  add(!!sw, 'Offline helper (service worker) running', 'Upload sw.js next to index.html, then reload the page once.');
+  const steps = ios ? '<b>iPhone / iPad (Safari):</b> tap the Share button <span class="mono">⬆︎</span> → <b>Add to Home Screen</b> → Add. (Chrome on iPhone: ⋮ / Share → Add to Home Screen.)'
+    : '<b>Android (Chrome):</b> tap ⋮ (top right) → <b>Install app</b> or <b>Add to Home screen</b>. If you only see “Add to Home screen”, choose it and then <b>Install</b>.<br><b>Laptop (Chrome / Edge):</b> click the install icon at the right end of the address bar.';
+  openModal(`<div class="mh"><h2>Install Workdesk on this device</h2><button class="iconbtn" onclick="closeModal()">✕</button></div><div class="mb">
+    <p style="margin-top:0">${steps}</p><div class="tw"><table class="t"><tbody>${checks.join('')}</tbody></table></div>
+    <p class="faint" style="font-size:12.5px">If every line is ticked and the option still doesn’t appear, reload the page once (the browser needs one visit after the offline helper starts), or clear the site’s data and open it again.</p></div>
+    <div class="mf"><button class="btn" onclick="closeModal()">OK</button></div>`);
+}
 /* ============================ SHELL ============================ */
 const NAV = [
-  ['Overview', [['dashboard','Dashboard'],['calendar','Calendar'],['agenda','Reminders & alerts']]],
-  ['Academic calendar', [['academic','Semesters & schedule']]],
-  ['Teaching', [['timetable','Timetable'],['diary','Work diary'],['courses','Courses & syllabus']]],
-  ['Examinations', [['examDuties','Exam duties'],['evaluations','Evaluations']]],
-  ['Mentoring', [['mentees','Mentees'],['mentorMeetings','Mentoring meetings']]],
-  ['Research', [['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']]],
-  ['Projects', [['projects','Projects & grants']]],
-  ['Administration', [['responsibilities','Responsibilities'],['committees','Committees & meetings'],['actions','Action items'],['reminders','Reminders']]],
-  ['', [['settings','Settings & backup']]]
+  ['dashboard','Dashboard'], ['calendar','Calendar'], ['agenda','Reminders & alerts'], ['academic','Academic calendar'],
+  { g:'Teaching', items:[['timetable','Timetable'],['diary','Work diary'],['courses','Courses & syllabus']] },
+  { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations']] },
+  { g:'Mentoring', items:[['mentees','Mentees'],['mentorMeetings','Mentoring meetings']] },
+  { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
+  ['projects','Projects & grants'],
+  { g:'Administration', items:[['responsibilities','Responsibilities'],['committees','Committees & meetings'],['actions','Action items'],['reminders','Reminders']] },
+  ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', actions:'action', reminders:'reminder', settings:'academic' };
-
+const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_ICON = {
+  dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
+  calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
+  agenda:'<path d="M5 13V9a5 5 0 0110 0v4l1.5 1.5h-13L5 13zM8 17a2 2 0 004 0"/>',
+  academic:'<path d="M10 3l8 4-8 4-8-4 8-4zM5 9v4c0 1.5 2.2 3 5 3s5-1.5 5-3V9"/>',
+  Teaching:'<path d="M3 4h6a2 2 0 012 2v11a2 2 0 00-2-2H3zM17 4h-6a2 2 0 00-2 2v11a2 2 0 012-2h6z"/>',
+  Examinations:'<path d="M6 2h6l4 4v12H6zM12 2v4h4M8 11h6M8 14h4"/>',
+  Mentoring:'<circle cx="7" cy="7" r="3"/><circle cx="14" cy="8" r="2.4"/><path d="M2 17c0-3 2.2-5 5-5s5 2 5 5M12 17c0-2 1-3.6 3-3.6s3 1.6 3 3.6"/>',
+  Research:'<path d="M8 2v6L3 16a1 1 0 001 1.5h12A1 1 0 0017 16l-5-8V2M7 2h6M5.5 12h9"/>',
+  projects:'<path d="M3 6h14v11H3zM7 6V4h6v2M3 11h14"/>',
+  Administration:'<path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h4"/>',
+  reports:'<path d="M5 2h7l4 4v12H5zM12 2v4h4M8 14v-3M11 14V9M14 14v-5"/>',
+  settings:'<circle cx="10" cy="10" r="2.6"/><path d="M10 2v2.2M10 15.8V18M2 10h2.2M15.8 10H18M4.3 4.3l1.6 1.6M14.1 14.1l1.6 1.6M4.3 15.7l1.6-1.6M14.1 5.9l1.6-1.6"/>',
+  backup:'<path d="M10 3v9M6 8l4 4 4-4M4 14v3h12v-3"/>'
+};
+function navIcon(k){ return `<svg class="ni" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${NAV_ICON[k] || '<circle cx="10" cy="10" r="3"/>'}</svg>`; }
+function groupOf(view){ const g = NAV.find(n => n.g && n.items.some(i => i[0] === view)); return g ? g.g : null; }
 function enterApp(){
   $('#login').style.display = 'none'; $('#app').style.display = 'block';
   const p = state.settings.profile;
   $('#brandSub').textContent = [p.name, p.department, p.institution].filter(Boolean).join(' · ');
-  $('#localBanner').classList.toggle('hidden', REMOTE);
+  $('#localBanner').classList.toggle('hidden', REMOTE || !!state.readonly);
+  $('#avatar').textContent = initials(p.name); $('#acctName').textContent = p.name || '';
+  const ro = $('#roBanner');
+  ro.classList.toggle('hidden', !state.readonly);
+  if(state.readonly) ro.innerHTML = `<b>Viewing a backup file</b> — ${esc(state.readonly.name)}${state.readonly.at ? ' · saved ' + esc(fdate(state.readonly.at.slice(0, 10))) : ''}. Read-only. <button class="btn ghost sm" onclick="closeBackupView()">Close backup</button>`;
   const hash = location.hash.replace('#', '');
   if(hash && (VIEWS[hash] || SCHEMA[hash])) state.view = hash;
   renderSync(); rerender();
@@ -1423,12 +1700,20 @@ function navCounts(){
 
 function renderNav(){
   const cnt = navCounts();
-  $('#sidebar').innerHTML = NAV.map(([g, items]) => (g ? `<div class="nav-label">${g}</div>` : '<div style="height:10px"></div>') + items.map(([id, label]) =>
-    `<button class="nav ${state.view === id ? 'active' : ''}" onclick="go('${id}')"><span class="dot" style="background:var(--c-${NAV_DOT[id]}, var(--navy))"></span>${label}${cnt[id] ? `<span class="cnt">${cnt[id]}</span>` : ''}</button>`).join('')).join('');
+  if(state.navOpen === undefined) state.navOpen = groupOf(state.view);
+  const item = ([id, label], sub) => `<button class="nav ${sub ? 'sub' : ''} ${state.view === id ? 'active' : ''}" onclick="go('${id}')">${sub ? '' : navIcon(id)}<span class="nl">${label}</span>${cnt[id] ? `<span class="cnt">${cnt[id]}</span>` : ''}</button>`;
+  $('#sidebar').innerHTML = NAV.map(n => {
+    if(!n.g) return item(n);
+    const open = state.navOpen === n.g, sum = n.items.reduce((a, i) => a + (cnt[i[0]] || 0), 0);
+    const act = n.items.some(i => i[0] === state.view);
+    return `<div class="ngrp ${open ? 'open' : ''}"><button class="nav ghead ${act ? 'has-active' : ''}" aria-expanded="${open}" onclick="toggleGroup('${n.g}')">${navIcon(n.g)}<span class="nl">${n.g}</span>${!open && sum ? `<span class="cnt">${sum}</span>` : ''}<svg class="chev" viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 4.5l3 3 3-3"/></svg></button>
+      <div class="gitems">${n.items.map(i => item(i, true)).join('')}</div></div>`;
+  }).join('') + `<div class="side-foot">${esc(state.settings.profile.name || '')}</div>`;
 }
-
+function toggleGroup(g){ state.navOpen = state.navOpen === g ? null : g; renderNav(); }
 function go(view, tab){
   state.view = view; if(tab) state.tab[view] = tab;
+  const g = groupOf(view); if(g) state.navOpen = g;
   history.replaceState(null, '', '#' + view);
   closeSidebar(); rerender(); window.scrollTo(0, 0);
 }
@@ -1475,6 +1760,13 @@ function refLabel(coll, r){
   if(coll === 'courses') return [r.code, r.title].filter(Boolean).join(' · ') + (r.classLabel ? ` (${r.classLabel})` : '');
   return r.name || r.label || r.title || r.id;
 }
+/* A human label for any record (search results, delete confirmations). */
+function recordLabel(coll, r){
+  if(!r) return '';
+  if(typeof RS !== 'undefined' && RS[coll]){ const t = RS[coll].title(r); const d = RS[coll].date(r); return [t, d && WD.validDate(d) ? fdate(d) : ''].filter(Boolean).join(' · '); }
+  if(coll === 'slots') return `${courseName(r.courseId, true)} · ${r.day} ${r.start || ''}`;
+  return r.name || r.label || r.title || '';
+}
 function refOptions(coll, filter){
   let arr = [...(state.data[coll] || [])];
   if(coll === 'courses'){
@@ -1517,7 +1809,12 @@ function fieldHtml(coll, f, rec){
     }
     case 'checklist': {
       const items = Array.isArray(v) ? v : [];
-      input = `<div class="ck-list" id="ck_${f.k}">${items.map(ckRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#ck_${f.k}').insertAdjacentHTML('beforeend', ckRow({}))">+ Add milestone</button>`;
+      input = `<div class="ck-list" id="ck_${f.k}">${items.map(ckRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#ck_${f.k}').insertAdjacentHTML('beforeend', ckRow({}))">${esc(f.addLabel || '+ Add milestone')}</button>`;
+      break;
+    }
+    case 'links': {
+      const items = Array.isArray(v) ? v : [];
+      input = `<div class="ck-list" id="lk_${f.k}">${items.map(linkRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#lk_${f.k}').insertAdjacentHTML('beforeend', linkRow({}))">+ Add link</button><div class="help">Paste a share link from Google Drive, OneDrive / SharePoint, Dropbox or any website. Set sharing on the file itself.</div>`;
       break;
     }
     case 'log': {
@@ -1533,6 +1830,12 @@ function fieldHtml(coll, f, rec){
   return `<div class="${f.full || f.type === 'textarea' || f.type === 'multiref' ? 'full' : ''}" data-f="${f.k}">${lab}${input}${help}</div>`;
 }
 function ckRow(m){ return `<div class="ck-row"><input type="checkbox" ${m.done ? 'checked' : ''}><input class="inp" placeholder="Milestone" value="${esc(m.text || '')}"><input class="inp" type="date" value="${esc(m.due || '')}" title="Due"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
+function linkKind(u){ u = String(u || '').toLowerCase(); if(/drive\.google|docs\.google|sheets\.google|slides\.google/.test(u)) return 'Drive'; if(/onedrive|1drv\.ms|sharepoint|office\.com|live\.com/.test(u)) return 'OneDrive'; if(/dropbox/.test(u)) return 'Dropbox'; return 'Link'; }
+function linkRow(m){ return `<div class="lk-row"><input class="inp" placeholder="Label (e.g. Stock register 2026)" value="${esc(m.label || '')}"><input class="inp" type="url" placeholder="https://drive.google.com/…" value="${esc(m.url || '')}"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
+function linksHtml(v, max){
+  const a = (Array.isArray(v) ? v : []).filter(x => x.url); if(!a.length) return '';
+  return `<span class="links">${a.slice(0, max || 9).map(x => `<a class="lk ${linkKind(x.url).toLowerCase()}" href="${esc(x.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(x.url)}"><b>${linkKind(x.url)}</b>${esc(x.label || 'Open')}</a>`).join('')}${a.length > (max || 9) ? `<span class="faint">+${a.length - max}</span>` : ''}</span>`;
+}
 function logRow(m){ return `<div class="log-row"><input class="inp" type="date" value="${esc(m.date || '')}"><input class="inp" placeholder="What progressed" value="${esc(m.note || '')}"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
 
 function readForm(coll, form, base){
@@ -1540,6 +1843,7 @@ function readForm(coll, form, base){
   SCHEMA[coll].fields.forEach(f => {
     if(f.type === 'multiref') rec[f.k] = $$(`input[name="${f.k}"]:checked`, form).map(i => i.value);
     else if(f.type === 'checklist') rec[f.k] = $$(`#ck_${f.k} .ck-row`, form).map(r => { const i = $$('input', r); return { done: i[0].checked, text: i[1].value.trim(), due: i[2].value }; }).filter(m => m.text);
+    else if(f.type === 'links') rec[f.k] = $$(`#lk_${f.k} .lk-row`, form).map(r => { const i = $$('input', r); let u = i[1].value.trim(); if(u && !/^https?:\/\//i.test(u)) u = 'https://' + u; return { label: i[0].value.trim(), url: u }; }).filter(m => m.url);
     else if(f.type === 'log') rec[f.k] = $$(`#lg_${f.k} .log-row`, form).map(r => { const i = $$('input', r); return { date: i[0].value, note: i[1].value.trim() }; }).filter(m => m.note).sort((a, b) => a.date < b.date ? 1 : -1);
     else { const el = form.elements[f.k]; if(el) rec[f.k] = el.value.trim ? el.value.trim() : el.value; }
   });
@@ -1598,6 +1902,10 @@ function editRecord(coll, id, preset){
   // dependent fields
   if(coll === 'diary' || coll === 'slots'){
     const cf = form.elements.courseId, sf = form.elements.semesterId;
+    if(coll === 'diary'){
+      const recalc = () => { const h = WD.hoursBetween(form.elements.start.value, form.elements.end.value); if(h) form.elements.hours.value = String(+h.toFixed(2)); };
+      form.elements.start.addEventListener('change', recalc); form.elements.end.addEventListener('change', recalc);
+    }
     if(coll === 'diary' && cf) cf.addEventListener('change', () => {
       const tmp = readForm(coll, form, rec); tmp.unit = '';
       $('[data-f="unit"]', form).outerHTML = fieldHtml(coll, sch.fields.find(f => f.k === 'unit'), tmp);
@@ -1611,7 +1919,10 @@ function editRecord(coll, id, preset){
   form.onsubmit = guard(async ev => {
     ev.preventDefault();
     const out = readForm(coll, form, modalState.base);
-    if(coll === 'diary' && (out.hours === '' || out.hours == null) && out.start && out.end) out.hours = String(WD.hoursBetween(out.start, out.end));
+    if(coll === 'diary'){
+      if((out.hours === '' || out.hours == null) && out.start && out.end) out.hours = String(WD.hoursBetween(out.start, out.end));
+      if(out.status !== 'Conducted') out.hours = '0';
+    }
     if(coll === 'evaluations' && out.scripts && +out.done >= +out.scripts && out.status !== 'Marks uploaded') out.status = 'Completed';
     if(preset && preset.sessionKey) out.sessionKey = preset.sessionKey;
     const err = validate(coll, out);
@@ -1623,7 +1934,7 @@ function editRecord(coll, id, preset){
 }
 function confirmDelete(coll, id){
   const r = WD.byId(state.data, coll, id);
-  openModal(`<div class="mh"><h2>Delete this ${esc(SCHEMA[coll].one)}?</h2></div><div class="mb"><p><b>${esc(refLabel(coll, r) || fdate(r.date) || '')}</b> will be removed permanently. Your daily Drive backup keeps older copies if you ever need it back.</p></div>
+  openModal(`<div class="mh"><h2>Delete this ${esc(SCHEMA[coll].one)}?</h2></div><div class="mb"><p><b>${esc(recordLabel(coll, r) || SCHEMA[coll].one)}</b> will be removed permanently. Your daily Drive backup keeps older copies if you ever need it back.</p></div>
     <div class="mf"><button class="btn ghost" onclick="closeModal()">Keep</button><button class="btn danger" onclick="store.remove('${coll}','${id}');closeModal();toast('Deleted')">Delete</button></div>`, true);
 }
 
@@ -1635,12 +1946,13 @@ const VIRTUAL = {
     if(coll === 'projects'){ const p = +r.progress || 0; return `<div style="min-width:90px">${bar(p, 'ok')}<div class="faint" style="font-size:11.5px;margin-top:3px">${p}%</div></div>`; }
     return '';
   },
+  paperworkProg: (coll, r) => { const a = r.paperwork || []; if(!a.length) return '<span class="faint">—</span>'; const d = a.filter(x => x.done).length, od = a.filter(x => !x.done && x.due && x.due < today()).length; return `<div style="min-width:90px">${bar(d / a.length * 100, od ? 'bad' : 'ok')}<div class="faint" style="font-size:11.5px;margin-top:3px">${d}/${a.length}${od ? ` · <span style="color:var(--bad)">${od} overdue</span>` : ''}</div></div>`; },
   lastMet: (coll, r) => { const d = lastMetDate(r.id); if(!d) return '<span class="chip warn">Not met yet</span>'; const n = WD.diffDays(d, today()); return `${fdate(d)} <span class="faint">(${n}d)</span>`; },
   nextMeeting: (coll, r) => { const m = state.data.meetings.filter(x => x.committeeId === r.id && x.status === 'Scheduled' && x.date >= today()).sort((a, b) => a.date < b.date ? -1 : 1)[0]; return m ? fdate(m.date) : '<span class="faint">—</span>'; },
   next: (coll, r) => { const d = WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : today()); return d ? `${fdate(d, 'dow')}${r.time ? ' ' + ftime(r.time) : ''}` : ''; },
   done: (coll, r) => (r.repeat || 'None') === 'None' ? (r.done ? chip('Done') : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')">Mark done</button>`) : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')" title="Skip to the next occurrence">Done for this time</button>`
 };
-const VIRTUAL_LABEL = { progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
+const VIRTUAL_LABEL = { paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
 function lastMetDate(menteeId){ let d = null; state.data.mentorMeetings.forEach(m => { if(m.status === 'Held' && (m.menteeIds || []).includes(menteeId) && (!d || m.date > d)) d = m.date; }); return d; }
 
 function cellHtml(coll, k, r){
@@ -1654,6 +1966,8 @@ function cellHtml(coll, k, r){
     case 'time': return `<span style="white-space:nowrap">${ftime(v)}</span>`;
     case 'ref': return esc(f.ref === 'courses' ? courseName(v) : refLabel(f.ref, WD.byId(state.data, f.ref, v)));
     case 'multiref': { const n = (v || []).map(id => refLabel(f.ref, WD.byId(state.data, f.ref, id))).filter(Boolean); return esc(n.length > 3 ? n.slice(0, 3).join(', ') + ` +${n.length - 3}` : n.join(', ')); }
+    case 'links': return linksHtml(v, 2) || '<span class="faint">—</span>';
+    case 'checklist': { const a = v || []; return a.length ? `${a.filter(x => x.done).length}/${a.length} done` : '<span class="faint">—</span>'; }
     case 'url': return `<a href="${esc(v)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open ↗</a>`;
     case 'email': return `<a href="mailto:${esc(v)}" onclick="event.stopPropagation()">${esc(v)}</a>`;
     case 'number': return k === 'amount' ? money(v) : esc(v);
@@ -1722,6 +2036,7 @@ function rowsForExport(coll, rows){
       else if(f.type === 'multiref') v = (v || []).map(id => refLabel(f.ref, WD.byId(state.data, f.ref, id))).join(', ');
       else if(f.type === 'checklist') v = (v || []).map(m => `${m.done ? '[x]' : '[ ]'} ${m.text}${m.due ? ' (' + m.due + ')' : ''}`).join('\n');
       else if(f.type === 'log') v = (v || []).map(m => `${m.date}: ${m.note}`).join('\n');
+      else if(f.type === 'links') v = (v || []).map(m => `${m.label ? m.label + ': ' : ''}${m.url}`).join('\n');
       else if(f.type === 'unit'){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(v)); v = u ? u.title : v; }
       o[f.label] = v == null ? '' : v;
     });
@@ -1749,7 +2064,7 @@ function runSearch(q){
     const txt = SCHEMA[c].fields.filter(f => ['text','textarea','email'].includes(f.type)).map(f => r[f.k] || '').join(' ').toLowerCase();
     if(txt.includes(q)) res.push({ c, r });
   }));
-  p.innerHTML = res.length ? res.slice(0, 40).map(({ c, r }) => `<button class="sr" onclick="$('#searchPanel').classList.remove('open');editRecord('${c}','${r.id}')"><b>${esc(refLabel(c, r) || r.topic || r.paper || r.journal || courseName(r.courseId))}</b><div>${esc(SCHEMA[c].one)}${r.date ? ' · ' + fdate(r.date) : ''}${r.due ? ' · due ' + fdate(r.due) : ''}</div></button>`).join('') : `<div class="sr"><div>No matches for “${esc(q)}”</div></div>`;
+  p.innerHTML = res.length ? res.slice(0, 40).map(({ c, r }) => `<button class="sr" onclick="$('#searchPanel').classList.remove('open');editRecord('${c}','${r.id}')"><b>${esc((RS[c] ? RS[c].title(r) : recordLabel(c, r)) || SCHEMA[c].one)}</b><div>${esc(SCHEMA[c].one)}${r.date ? ' · ' + fdate(r.date) : ''}${r.due ? ' · due ' + fdate(r.due) : ''}${c === 'diary' && r.topic ? ' · ' + esc(r.topic.slice(0, 60)) : ''}</div></button>`).join('') : `<div class="sr"><div>No matches for “${esc(q)}”</div></div>`;
   p.classList.add('open');
 }
 document.addEventListener('click', e => { const p = $('#searchPanel'); if(p && !e.target.closest('.search')) p.classList.remove('open'); const m = $('#qaMenu'); if(m && !e.target.closest('#qaWrap')) m.remove(); });
@@ -1852,14 +2167,34 @@ VIEWS.dashboard = () => {
   const weekStart = WD.addDays(t, -((WD.dow(t) + 6) % 7));
   let weekSched = 0, weekDone = 0;
   WD.eachDay(weekStart, WD.addDays(weekStart, 6), d => WD.sessionsOn(state.data, state.settings, d).forEach(s => { const h = WD.hoursBetween(s.start, s.end); weekSched += h; const e = didx[s.key]; if(e && e.status === 'Conducted') weekDone += WD.entryHours(e); }));
-  const tile = (n, l, s, color, view, tab) => `<button class="tile" style="--tc:var(--c-${color})" onclick="go('${view}'${tab ? `,'${tab}'` : ''})"><div class="n">${n}</div><div class="l">${l}</div><div class="s">${s || '&nbsp;'}</div></button>`;
+  const CONF_KINDS = ['Conference','Symposium'], live = c => !['Cancelled','Not attending'].includes(c.status);
+  const byStart = (a, b) => a.start < b.start ? -1 : 1;
+  const confUp = state.data.conferences.filter(c => CONF_KINDS.includes(c.kind || 'Conference') && live(c) && c.start && (c.end || c.start) >= t).sort(byStart);
+  const wsUp = state.data.conferences.filter(c => !CONF_KINDS.includes(c.kind || 'Conference') && live(c) && c.start && (c.end || c.start) >= t).sort(byStart);
+  const yr = c => (c.start || '').slice(0, 4) === t.slice(0, 4) && ['Attended','Presented'].includes(c.status);
+  const confYear = state.data.conferences.filter(c => CONF_KINDS.includes(c.kind || 'Conference') && yr(c)).length;
+  const wsYear = state.data.conferences.filter(c => !CONF_KINDS.includes(c.kind || 'Conference') && yr(c)).length;
+  const revHand = state.data.reviews.filter(r => ['Invited','Accepted','In progress'].includes(r.status));
+  const nextRev = revHand.filter(r => r.due).sort((a, b) => a.due < b.due ? -1 : 1)[0];
+  const revYear = state.data.reviews.filter(r => r.status === 'Submitted' && (r.due || r.invited || '').slice(0, 4) === t.slice(0, 4)).length;
+  const byDate = (a, b) => (a.date + (a.time || '')) < (b.date + (b.time || '')) ? -1 : 1;
+  const meetUp = state.data.meetings.filter(m => m.status === 'Scheduled' && m.date >= t).sort(byDate);
+  const mentUp = state.data.mentorMeetings.filter(m => m.status === 'Scheduled' && m.date >= t).sort(byDate);
+  const dutyUp = state.data.examDuties.filter(x => x.status === 'Assigned' && x.date >= t).sort(byDate);
+  const tile = (n, l, s, color, view, tab) => `<button class="tile" style="--tc:var(--c-${color})" title="${esc(String(s || '').replace(/<[^>]+>/g, ''))}" onclick="go('${view}'${tab ? `,'${tab}'` : ''})"><div class="n">${n}</div><div class="l">${l}</div><div class="s">${s || '&nbsp;'}</div></button>`;
   const tiles = `<div class="tiles">
     ${tile(sessions.length, 'Classes today', sessions.length ? sessions.map(s => courseName(s.courseId, true)).join(', ') : (status.teaching ? 'No classes scheduled' : status.reason), 'classes', 'timetable', 'week')}
     ${tile(pend.length, 'Diary entries pending', pend.length ? 'Oldest ' + fdate(pend[0].date, 'short') : 'All classes logged', pend.length ? 'action' : 'project', 'diary', 'pending')}
     ${tile(evalLeft, 'Scripts to evaluate', nextEval ? 'Next due ' + fdate(nextEval.due, 'short') : 'Nothing pending', 'evaluation', 'evaluations')}
     ${tile(openActs.length, 'Open action items', overdueActs ? `<span style="color:var(--bad)">${overdueActs} overdue</span>` : 'None overdue', 'action', 'actions')}
     ${tile(underReview, 'Papers in review', pubYear + ' published in ' + t.slice(0, 4), 'publication', 'publications')}
-    ${tile(activeProj.length, 'Active projects', nextRep ? 'Report due ' + fdate(nextRep.nextReportDue, 'short') : '—', 'project', 'projects')}
+    ${tile(activeProj.length, 'Projects & grants', [activeProj.length ? money(activeProj.reduce((a, x) => a + (+x.amount || 0), 0)) + ' active' : '', nextRep ? 'report due ' + fdate(nextRep.nextReportDue, 'short') : (state.data.projects.filter(x => x.status === 'Submitted').length ? state.data.projects.filter(x => x.status === 'Submitted').length + ' submitted' : '')].filter(Boolean).join(' · ') || 'None active', 'project', 'projects')}
+    ${tile(confUp.length, 'Conferences', confUp[0] ? 'Next: ' + esc(confUp[0].title) + ' · ' + fdate(confUp[0].start, 'short') : confYear + ' attended in ' + t.slice(0, 4), 'conference', 'conferences')}
+    ${tile(wsUp.length, 'Workshops & FDPs', wsUp[0] ? 'Next: ' + esc(wsUp[0].title) + ' · ' + fdate(wsUp[0].start, 'short') : wsYear + ' attended in ' + t.slice(0, 4), 'plan', 'conferences')}
+    ${tile(revHand.length, 'Peer reviews in hand', nextRev ? 'Next due ' + fdate(nextRev.due, 'short') + (nextRev.due < t ? ' (overdue)' : '') : revYear + ' submitted in ' + t.slice(0, 4), 'review', 'reviews')}
+    ${tile(meetUp.length, 'Committee meetings', meetUp[0] ? 'Next: ' + esc(((WD.byId(state.data, 'committees', meetUp[0].committeeId) || {}).name || 'Meeting')) + ' · ' + fdate(meetUp[0].date, 'short') : 'None scheduled', 'meeting', 'committees', 'upcoming')}
+    ${tile(mentUp.length, 'Mentoring meetings', mentUp[0] ? 'Next ' + fdate(mentUp[0].date, 'short') + (mentUp[0].time ? ' ' + ftime(mentUp[0].time) : '') : 'None scheduled', 'mentoring', 'mentorMeetings')}
+    ${tile(dutyUp.length, 'Exam duties ahead', dutyUp[0] ? 'Next: ' + esc(dutyUp[0].dutyType || 'Duty') + ' · ' + fdate(dutyUp[0].date, 'short') : 'None assigned', 'exam', 'examDuties')}
   </div>`;
 
   // today timeline
@@ -1929,7 +2264,7 @@ VIEWS.dashboard = () => {
       <li>Everything else (duties, evaluations, research, committees) as it comes in</li></ol>
     <div class="muted" style="font-size:13.5px">Want to see it working first? <button class="linkbtn" onclick="loadSample()">Load sample data</button> — you can clear it later in Settings.</div></div>` : '';
 
-  return `<div class="hello"><div><h1>${greeting()}${p.name ? ', ' + esc(p.name) : ''}</h1><div class="d">${fdate(t, 'long')}</div></div>
+  return `<div class="hello"><div><h1>${greeting()}${p.name ? ', ' + esc(p.name) : ''}</h1><div class="d">${fdate(t, 'long')}</div>${[p.designation, p.department, p.institution].filter(Boolean).length ? `<div class="d" style="font-size:13px">${esc([p.designation, p.department, p.institution].filter(Boolean).join(' · '))}</div>` : ''}</div>
     <div class="qa"><button class="btn sm" onclick="editRecord('diary',null,{date:'${t}'})">+ Log class</button><button class="btn ghost sm" onclick="editRecord('extraClasses',null,{date:'${t}'})">+ Extra class</button><button class="btn ghost sm" onclick="editRecord('reminders',null,{date:'${t}'})">+ Reminder</button><button class="btn ghost sm" onclick="editRecord('actions')">+ Action</button></div></div>
     ${setup}${semStrip}${tiles}
     <div class="grid dash-main"><div class="grid" style="align-content:start">${attCard}${todayCard}${teachCard}</div><div class="grid" style="align-content:start">${upCard}${resCard}${projCard}</div></div>`;
@@ -2269,7 +2604,7 @@ VIEWS.reminders = () => pageHead('Reminders', 'One-off or repeating — they app
 
 /* ---------------- SETTINGS ---------------- */
 VIEWS.settings = () => {
-  const tb = tabs('settings', [['general','Profile & timetable'],['reminders','Reminders & email'],['data','Backup & data']]);
+  const tb = tabs('settings', [['general','Profile & timetable'],['reminders','Reminders & email'],['device','App & security']]);
   const s = state.settings;
   let body = '';
   if(tb.cur === 'general'){
@@ -2296,17 +2631,26 @@ VIEWS.settings = () => {
       <div class="card"><h3>Nudges</h3><div class="fg"><div><label class="f">Flag mentees not met in (days)</label><input class="inp" type="number" min="0" name="menteeGapDays" value="${esc(g.menteeGapDays)}"></div><div><label class="f">Flag papers under review for (days)</label><input class="inp" type="number" min="0" name="reviewNudgeDays" value="${esc(g.reviewNudgeDays)}"></div></div><div class="help">Set to 0 to turn a nudge off.</div></div></div>
       <div class="full"><button class="btn" type="submit">Save reminder settings</button></div></form>`;
   } else {
-    const n = WD.COLLECTIONS.reduce((a, c) => a + state.data[c].length, 0);
-    const sample = WD.COLLECTIONS.reduce((a, c) => a + state.data[c].filter(r => r._sample).length, 0);
-    body = `<div class="grid g2"><div class="card"><h3>Backup</h3><p class="muted" style="font-size:13.5px">${n} records in total. ${REMOTE ? 'The backend also saves a dated copy to your Google Drive every night (see SETUP.md, Part 3).' : '<b>Local mode:</b> data lives only in this browser — download a backup regularly.'}</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="backupJson()">⬇ Download backup (.json)</button><button class="btn ghost" onclick="exportXlsx('*')">⬇ Everything as Excel</button><button class="btn ghost" onclick="exportIcs()">⬇ Calendar (.ics)</button></div>
-        <h3 style="margin-top:18px">Restore</h3><p class="muted" style="font-size:13.5px">Replaces everything with the contents of a backup file.</p><input type="file" accept=".json,application/json" onchange="restoreJson(this.files[0])"></div>
-      <div class="card"><h3>Sample data</h3><p class="muted" style="font-size:13.5px">${sample ? `${sample} sample records are loaded.` : 'Load a realistic example semester to explore every page.'}</p>${sample ? `<button class="btn danger" onclick="clearSample()">Remove sample data</button>` : `<button class="btn ghost" onclick="loadSample()">Load sample data</button>`}
-        ${REMOTE ? `<h3 style="margin-top:18px">Security</h3><button class="btn ghost" onclick="changePin()">Change PIN</button> <button class="btn ghost" onclick="signOut()">Sign out of this device</button>` : ''}
-        <h3 style="margin-top:18px">About</h3><div class="faint" style="font-size:12.5px">Faculty Workdesk v<span id="ver"></span> · ${REMOTE ? 'Connected to Google Sheet backend' : 'Local mode'}</div></div></div>`;
+    body = `<div class="grid g2"><div class="card"><h3>Install on your phone or laptop</h3><p class="muted" style="font-size:13.5px">${isStandalone() ? 'You are using the installed app.' : 'Install Workdesk so it opens like an app from your home screen, full-screen and without the browser bar.'}</p><button class="btn" onclick="installApp()">Install app…</button> <button class="btn ghost" onclick="showInstallHelp()">Check why it isn’t installing</button></div>
+      <div class="card"><h3>Security</h3>${REMOTE ? `<p class="muted" style="font-size:13.5px">Your PIN protects the data in your Google Sheet. Forgot it? Run <span class="mono">resetPin</span> in Apps Script.</p><button class="btn ghost" onclick="changePin()">Change PIN</button> <button class="btn ghost" onclick="signOut()">Sign out</button> <button class="btn danger" onclick="forgetDevice()">Sign out & remove data from this device</button>` : '<p class="muted" style="font-size:13.5px">Local mode has no PIN. Connect the Google Sheet backend (SETUP.md) to protect your desk with a PIN.</p>'}
+      <h3 style="margin-top:18px">Appearance</h3><button class="btn ghost" onclick="toggleTheme()">Switch light / dark</button>
+      <h3 style="margin-top:18px">About</h3><div class="faint" style="font-size:12.5px">Faculty Workdesk v<span id="ver"></span> · ${REMOTE ? 'Connected to Google Sheet backend' : 'Local mode'}</div></div></div>`;
   }
-  return pageHead('Settings & backup', '') + tb.html + body;
+  return pageHead('Settings', 'Your profile, timetable pattern, reminders and app options') + tb.html + body;
 };
+VIEWS.backup = () => {
+  const n = WD.COLLECTIONS.reduce((a, c) => a + state.data[c].length, 0);
+  const sample = WD.COLLECTIONS.reduce((a, c) => a + state.data[c].filter(r => r._sample).length, 0);
+  const snap = LS.get(REMOTE ? 'wd_cache' : 'wd_local', null);
+  return pageHead('Backup & restore', `${n} records${snap && snap.at ? ' · copy on this device saved ' + new Date(snap.at).toLocaleString('en-IN', { timeZone: TZ, dateStyle: 'medium', timeStyle: 'short' }) : ''}`) +
+    `<div class="grid g2"><div class="card"><h3>Download a backup</h3><p class="muted" style="font-size:13.5px">${REMOTE ? 'The backend also saves a dated copy to the Drive folder <b>Faculty Workdesk backups</b> every night.' : '<b>Local mode:</b> data lives only in this browser, so download a backup regularly.'}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="backupJson()">⬇ Backup (.json)</button><button class="btn ghost" onclick="exportXlsx('*')">⬇ Everything as Excel</button><button class="btn ghost" onclick="exportIcs()">⬇ Calendar (.ics)</button></div></div>
+      <div class="card"><h3>Open a backup file</h3><p class="muted" style="font-size:13.5px">Opens any Workdesk .json backup straight away, read-only, without touching your live data. You can also do this from the sign-in screen, even offline.</p>
+        <label class="btn ghost" style="cursor:pointer">Open .json file…<input type="file" accept=".json,application/json" hidden onchange="openBackupFile(this.files[0])"></label></div>
+      <div class="card"><h3>Restore</h3><p class="muted" style="font-size:13.5px">Replaces all your data with the contents of a backup file.${REMOTE ? ' A snapshot of the current data goes to Drive first.' : ''}</p><label class="btn danger" style="cursor:pointer">Choose backup to restore…<input type="file" accept=".json,application/json" hidden onchange="restoreJson(this.files[0])"></label></div>
+      <div class="card"><h3>Sample data</h3><p class="muted" style="font-size:13.5px">${sample ? `${sample} sample records are loaded.` : 'Load a realistic example semester to explore every page.'}</p>${sample ? `<button class="btn danger" onclick="clearSample()">Remove sample data</button>` : `<button class="btn ghost" onclick="loadSample()">Load sample data</button>`}</div></div>`;
+};
+
 
 function afterRender(){
   const v = $('#ver'); if(v) v.textContent = (document.querySelector('meta[name=app-version]') || {}).content || '';
@@ -2350,11 +2694,11 @@ async function sendDigestNow(){
   catch(e){ toast('Could not send: ' + e.message, true); }
 }
 function changePin(){
-  openModal(`<div class="mh"><h2>Change PIN</h2><button class="iconbtn" onclick="closeModal()">✕</button></div><form id="pinChg"><div class="mb"><div id="pcErr"></div><div class="fg"><div class="full"><label class="f">Current PIN</label><input class="inp" type="password" name="old" inputmode="numeric" required></div><div><label class="f">New PIN (6+ digits)</label><input class="inp" type="password" name="n1" inputmode="numeric" required></div><div><label class="f">Repeat new PIN</label><input class="inp" type="password" name="n2" inputmode="numeric" required></div></div></div><div class="mf"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Change</button></div></form>`, true);
+  openModal(`<div class="mh"><h2>Change PIN</h2><button class="iconbtn" onclick="closeModal()">✕</button></div><form id="pinChg"><div class="mb"><div id="pcErr"></div><div class="fg"><div class="full"><label class="f">Current PIN</label><input class="inp" type="password" name="old" inputmode="numeric" required></div><div><label class="f">New PIN (4+ digits)</label><input class="inp" type="password" name="n1" inputmode="numeric" required></div><div><label class="f">Repeat new PIN</label><input class="inp" type="password" name="n2" inputmode="numeric" required></div></div></div><div class="mf"><button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn">Change</button></div></form>`, true);
   $('#pinChg').onsubmit = async e => {
     e.preventDefault(); const f = e.target.elements;
-    if(!/^\d{6,}$/.test(f.n1.value) || f.n1.value !== f.n2.value) return $('#pcErr').innerHTML = '<div class="err">New PINs must match and be at least 6 digits.</div>';
-    try{ const oldH = await pinHash(f.old.value), newH = await pinHash(f.n1.value); await store.api({ action:'changePin', auth: oldH, newHash: newH }); state.auth = newH; if(LS.get('wd_auth', null)) LS.set('wd_auth', newH); else SS.set('wd_auth', newH); closeModal(); toast('PIN changed — other devices will ask for the new PIN.'); }
+    if(!/^\d{4,}$/.test(f.n1.value) || f.n1.value !== f.n2.value) return $('#pcErr').innerHTML = '<div class="err">New PINs must match and be at least 4 digits.</div>';
+    try{ const oldH = await pinHash(f.old.value), newH = await pinHash(f.n1.value); await store.api({ action:'changePin', auth: oldH, newHash: newH }); state.auth = newH; pinCheck(newH).then(v => LS.set('wd_pinchk', v)); if(LS.get('wd_auth', null)) LS.set('wd_auth', newH); else SS.set('wd_auth', newH); closeModal(); toast('PIN changed — other devices will ask for the new PIN.'); }
     catch(err){ $('#pcErr').innerHTML = `<div class="err">${esc(err.message)}</div>`; }
   };
 }
@@ -2374,7 +2718,8 @@ function exportIcs(){
     lines.push('SUMMARY:' + e(i.title), 'DESCRIPTION:' + e((CAT_SHORT[i.cat] || '') + (i.detail ? ' — ' + i.detail : '')), 'CATEGORIES:' + e(CAT_SHORT[i.cat] || i.cat), 'END:VEVENT');
   });
   lines.push('END:VCALENDAR');
-  download(`workdesk-${t}.ics`, lines.join('\r\n'), 'text/calendar');
+  const fold = l => { const out = []; while(l.length > 74){ out.push(l.slice(0, 74)); l = ' ' + l.slice(74); } out.push(l); return out.join('\r\n'); };
+  download(`workdesk-${t}.ics`, lines.map(fold).join('\r\n'), 'text/calendar');
   toast(`${items.length} events for the next 6 months exported`);
 }
 
@@ -2457,14 +2802,14 @@ function buildSample(){
   out.projects.push(mk({ title: 'Low-cost polyanionic cathodes for sodium-ion batteries', agency: 'Christ University', scheme: 'Seed Money', role: 'PI', amount: '300000', status: 'Ongoing', sanctioned: D(-200), start: D(-180), end: D(185), nextReportDue: D(12), progress: '45', milestones: [{ text: 'Procure tube furnace', due: D(-150), done: true }, { text: 'Optimise NFPP synthesis', due: D(-20), done: true }, { text: 'Electrochemical evaluation', due: D(60), done: false }, { text: 'Final report & paper', due: D(185), done: false }], log: [{ date: D(-25), note: 'Phase-pure NFPP obtained at 500 °C; 105 mAh/g at 0.1C' }] }));
   out.projects.push(mk({ title: 'Operando studies of layered oxide cathodes', agency: 'ANRF', scheme: 'Core Research Grant', role: 'PI', amount: '3200000', status: 'Submitted', submitted: D(-60), start: '', end: '', progress: '0' }));
   out.projects.push(mk({ title: 'MnO2 supercapacitors from battery waste', agency: 'DST', scheme: 'TDP', role: 'Co-PI', amount: '1850000', status: 'Ongoing', start: D(-500), end: D(230), nextReportDue: D(55), progress: '60', milestones: [{ text: 'Prototype device', due: D(100), done: false }] }));
-  out.responsibilities.push(mk({ title: 'Materials Lab in-charge', role: 'In-charge', level: 'Department', since: D(-700), status: 'Active', duties: 'Stock register monthly; chemical inventory; AMC follow-up for glovebox' }));
+  out.responsibilities.push(mk({ title: 'Materials Lab in-charge', role: 'In-charge', level: 'Department', since: D(-700), status: 'Active', duties: 'Stock register monthly; chemical inventory; AMC follow-up for glovebox', paperwork: [{ text: 'Annual stock verification report', due: D(-40), done: true }, { text: 'Glovebox AMC renewal file to purchase dept', due: D(8), done: false }, { text: 'Chemical inventory update (Sep)', due: D(-2), done: false }], docs: [{ label: 'Stock register 2026–27', url: 'https://docs.google.com/spreadsheets/d/EXAMPLE' }, { label: 'AMC quotation', url: 'https://1drv.ms/b/s!EXAMPLE' }] }));
   out.responsibilities.push(mk({ title: 'Class teacher — II M.Sc. Physics A', role: 'Class teacher', level: 'Department', since: D(-75), status: 'Active' }));
-  out.responsibilities.push(mk({ title: 'NAAC Criterion III data coordinator', role: 'Coordinator', level: 'School', since: D(-300), status: 'Active' }));
+  out.responsibilities.push(mk({ title: 'NAAC Criterion III data coordinator', role: 'Coordinator', level: 'School', since: D(-300), status: 'Active', paperwork: [{ text: 'Criterion 3.3 publication data sheet', due: D(10), done: false }], docs: [{ label: 'AQAR 2025–26 folder', url: 'https://drive.google.com/drive/folders/EXAMPLE' }] }));
   const cm1 = mk({ name: 'Board of Studies — Physics', role: 'Member', level: 'Department', chair: 'HoD', frequency: 'Every semester', status: 'Active' });
   const cm2 = mk({ name: 'IQAC — School of Sciences', role: 'Member', level: 'School', chair: 'Dean', frequency: 'Monthly', status: 'Active' });
   const cm3 = mk({ name: 'Research Advisory Committee', role: 'Convener', level: 'Department', frequency: 'As needed', status: 'Active' });
   out.committees.push(cm1, cm2, cm3);
-  out.meetings.push(mk({ committeeId: cm2.id, title: 'Monthly review', date: D(-26), time: '15:00', venue: 'Dean’s conference room', status: 'Held', agenda: 'AQAR data; FDP calendar', minutes: 'Criterion III data due by month end. Each dept to propose one FDP.' }));
+  out.meetings.push(mk({ committeeId: cm2.id, title: 'Monthly review', date: D(-26), time: '15:00', venue: 'Dean’s conference room', status: 'Held', agenda: 'AQAR data; FDP calendar', minutes: 'Criterion III data due by month end. Each dept to propose one FDP.', docs: [{ label: 'Minutes (signed)', url: 'https://drive.google.com/file/d/EXAMPLE' }] }));
   out.meetings.push(mk({ committeeId: cm2.id, title: 'Monthly review', date: D(4), time: '15:00', venue: 'Dean’s conference room', status: 'Scheduled' }));
   out.meetings.push(mk({ committeeId: cm1.id, title: 'BoS — syllabus revision', date: D(17), time: '10:30', venue: 'Department seminar hall', status: 'Scheduled', agenda: 'Revise PHY231 syllabus; add energy-materials elective' }));
   out.meetings.push(mk({ committeeId: cm3.id, title: 'Scholar progress review', date: D(-10), time: '14:00', venue: 'Online', status: 'Held' }));
@@ -2492,6 +2837,227 @@ const clearSample = guard(async () => {
   WD.resetCache(); rerender(); toast('Sample data removed');
 });
 
+/* ============================ REPORTS ============================
+   Same model as the Research Group Logbook's Reports page: pick a report
+   type, generate it on screen, then Print / Save as PDF, download as text,
+   CSV or Excel. Every report ends with the same "End of Report" line.     */
+const RS = {
+  diary:           { label:'Work diary', date:r => r.date, title:r => courseName(r.courseId), status:r => r.status, detail:r => [unitTitle(r), r.topic].filter(Boolean).join(' — '), extra:r => ({ Time: ftime(r.start) + (r.end ? '–' + ftime(r.end) : ''), Hours: WD.entryHours(r) || '', Attendance: r.present ? r.present + (r.total ? '/' + r.total : '') : '' }) },
+  extraClasses:    { label:'Extra / additional classes', date:r => r.date, title:r => courseName(r.courseId), status:r => r.kind, detail:r => r.reason },
+  examDuties:      { label:'Exam duties', date:r => r.date, title:r => [r.dutyType, r.exam].filter(Boolean).join(' — '), status:r => r.status, detail:r => [r.start && r.end ? ftime(r.start) + '–' + ftime(r.end) : '', r.venue].filter(Boolean).join(' · ') },
+  evaluations:     { label:'Evaluations', date:r => r.due || r.received, title:r => r.paper, status:r => r.status, detail:r => [r.evalType, r.exam, r.scripts ? (r.done || 0) + '/' + r.scripts + ' scripts' : ''].filter(Boolean).join(' · ') },
+  mentorMeetings:  { label:'Mentoring meetings', date:r => r.date, title:r => (r.kind || 'Meeting') + ' — ' + menteeNames(r), status:r => r.status, detail:r => [r.agenda, r.notes, r.actions && 'Actions: ' + r.actions].filter(Boolean).join(' | ') },
+  mentees:         { label:'Mentees', date:() => '', title:r => r.name, status:r => r.active === 'No' ? 'Inactive' : 'Active', detail:r => [r.regNo, r.programme, r.batch].filter(Boolean).join(' · ') },
+  plans:           { label:'Research plans', date:r => r.target, title:r => r.title, status:r => r.status, detail:r => { const m = r.milestones || []; return m.length ? m.filter(x => x.done).length + '/' + m.length + ' milestones · ' + m.map(x => (x.done ? '✓ ' : '○ ') + x.text).join('; ') : ''; } },
+  publications:    { label:'Publications', date:r => r.published || r.submitted, title:r => r.title, status:r => r.status, detail:r => [r.venue, r.indexing, r.quartile, r.doi && 'DOI ' + r.doi].filter(Boolean).join(' · ') },
+  conferences:     { label:'Conferences & workshops', date:r => r.start, title:r => r.title, status:r => r.status, detail:r => [r.kind, r.role, r.organiser, r.venue, r.paperTitle].filter(Boolean).join(' · ') },
+  reviews:         { label:'Peer review & editorial', date:r => r.due || r.invited, title:r => r.journal, status:r => r.status, detail:r => [r.role, r.manuscript, r.round && 'Round ' + r.round].filter(Boolean).join(' · ') },
+  collaborations:  { label:'Collaborations', date:r => r.since, title:r => r.name, status:r => r.status, detail:r => [r.institution, r.country, r.kind, r.area, r.outcomes].filter(Boolean).join(' · '), active:true },
+  contacts:        { label:'Researcher contacts', date:() => '', title:r => r.name, status:r => r.relation, detail:r => [r.designation, r.institution, r.expertise].filter(Boolean).join(' · ') },
+  metrics:         { label:'Metrics history', date:r => r.date, title:r => r.source, status:() => '', detail:r => `Documents ${r.documents || '–'} · Citations ${r.citations || '–'} · h-index ${r.hIndex || '–'} · i10 ${r.i10 || '–'}` },
+  projects:        { label:'Projects & grants', date:r => r.start || r.submitted, end:r => r.end, title:r => r.title, status:r => r.status, detail:r => [r.agency, r.scheme, r.role, r.amount ? money(r.amount) : '', (r.progress ? r.progress + '% done' : '')].filter(Boolean).join(' · ') },
+  responsibilities:{ label:'Responsibilities & in-charges', date:r => r.since, end:r => r.until, title:r => r.title, status:r => r.status, detail:r => { const p = r.paperwork || []; return [r.role, r.level, p.length ? p.filter(x => x.done).length + '/' + p.length + ' paperwork done' : ''].filter(Boolean).join(' · '); } },
+  committees:      { label:'Committees', date:() => '', title:r => r.name, status:r => r.status, detail:r => [r.role, r.level, r.frequency].filter(Boolean).join(' · ') },
+  meetings:        { label:'Committee meetings', date:r => r.date, title:r => ((WD.byId(state.data, 'committees', r.committeeId) || {}).name || 'Meeting') + (r.title ? ' — ' + r.title : ''), status:r => r.status, detail:r => r.minutes || r.agenda },
+  actions:         { label:'Action items', date:r => r.due, title:r => r.title, status:r => r.status, detail:r => [r.priority && r.priority + ' priority', r.source].filter(Boolean).join(' · ') },
+  reminders:       { label:'Reminders', date:r => r.date, title:r => r.title, status:r => r.done ? 'Done' : (r.repeat || 'None'), detail:r => r.category },
+  schedule:        { label:'Academic schedule', date:r => r.date, title:r => r.title, status:r => r.category, detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
+  holidays:        { label:'Holidays', date:r => r.date, title:r => r.name, status:() => '', detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
+  courses:         { label:'Courses', date:() => '', title:r => courseName(r.id), status:r => r.kind, detail:r => [r.classLabel, r.credits && r.credits + ' credits', (WD.byId(state.data, 'semesters', r.semesterId) || {}).name].filter(Boolean).join(' · ') }
+};
+const PERIOD_ORDER = [['Teaching', ['diary','extraClasses']], ['Examinations', ['examDuties','evaluations']], ['Mentoring', ['mentorMeetings']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Projects & grants', ['projects']], ['Administration', ['responsibilities','meetings','actions']]];
+function unitTitle(r){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(r.unit)); return u ? u.title : ''; }
+function menteeNames(r){ const n = (r.menteeIds || []).map(id => (WD.byId(state.data, 'mentees', id) || {}).name).filter(Boolean); return n.length > 4 ? n.length + ' mentees' : n.join(', '); }
+function inPeriod(cfg, r, from, to){
+  const d = cfg.date(r), e = cfg.end ? cfg.end(r) : '';
+  if(cfg.end || cfg.active){ // ranges: include if they overlap the period
+    if(!d && !e) return true;
+    return (!to || !d || d <= to) && (!from || !e || e >= from) && (cfg.active ? (!to || !d || d <= to) : true);
+  }
+  if(!d) return false;
+  return (!from || d >= from) && (!to || d <= to);
+}
+function sectionRows(key, from, to, filter){
+  const cfg = RS[key];
+  return state.data[key].filter(r => (!from && !to) || inPeriod(cfg, r, from, to)).filter(filter || (() => true))
+    .map(r => ({ id: r.id, date: cfg.date(r) || '', title: cfg.title(r) || '', status: cfg.status(r) || '', detail: cfg.detail(r) || '', extra: cfg.extra ? cfg.extra(r) : null, docs: r.docs || [] }))
+    .sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+}
+
+if(!state.rep) state.rep = { type:'period', includeEmpty:false, section:'diary', data:null };
+function repDefaults(){
+  const cs = currentSemester();
+  if(state.rep.from === undefined) state.rep.from = cs ? cs.start : WD.addDays(today(), -180);
+  if(state.rep.to === undefined) state.rep.to = today();
+  if(!state.rep.courseId){ const c = refOptions('courses')[0]; state.rep.courseId = c ? c.id : ''; }
+}
+
+VIEWS.reports = () => {
+  repDefaults();
+  const R = state.rep;
+  const typeBtn = (t, l, d) => `<button class="rtype ${R.type === t ? 'active' : ''}" onclick="state.rep.type='${t}';state.rep.data=null;rerender()"><b>${l}</b><small>${d}</small></button>`;
+  const dates = `<div><label class="f" for="r_from">From</label><input class="inp" type="date" id="r_from" value="${esc(R.from || '')}" onchange="state.rep.from=this.value"></div><div><label class="f" for="r_to">To</label><input class="inp" type="date" id="r_to" value="${esc(R.to || '')}" onchange="state.rep.to=this.value"></div>`;
+  const quick = `<div class="full" style="display:flex;gap:6px;flex-wrap:wrap">${repQuickRanges().map(([l, f, t]) => `<button class="btn ghost sm" onclick="state.rep.from='${f}';state.rep.to='${t}';rerender()">${l}</button>`).join('')}</div>`;
+  let form = '';
+  if(R.type === 'period') form = `<div class="fg">${dates}${quick}</div><label class="chk"><input type="checkbox" id="r_empty" ${R.includeEmpty ? 'checked' : ''} onchange="state.rep.includeEmpty=this.checked;if(state.rep.data)generateReport();"> Include sections with no entries</label>
+    <label class="chk"><input type="checkbox" id="r_diary" ${R.fullDiary !== false ? 'checked' : ''} onchange="state.rep.fullDiary=this.checked;if(state.rep.data)generateReport();"> Include every work-diary entry (untick for the teaching summary only)</label>`;
+  else if(R.type === 'course') form = `<div class="fg"><div class="full"><label class="f" for="r_course">Course</label><select class="inp" id="r_course" onchange="state.rep.courseId=this.value">${refOptions('courses').map(c => `<option value="${c.id}" ${R.courseId === c.id ? 'selected' : ''}>${esc(courseName(c.id))}${c.classLabel ? ' — ' + esc(c.classLabel) : ''}</option>`).join('')}</select></div>${dates}</div><div class="faint" style="font-size:12.5px">Leave the dates as they are for the whole semester, or clear them for everything.</div>`;
+  else form = `<div class="fg"><div class="full"><label class="f" for="r_section">Section</label><select class="inp" id="r_section" onchange="state.rep.section=this.value">${Object.keys(RS).map(k => `<option value="${k}" ${R.section === k ? 'selected' : ''}>${esc(RS[k].label)}</option>`).join('')}</select></div>${dates}<div class="full"><button class="btn ghost sm" onclick="state.rep.from='';state.rep.to='';rerender()">All dates</button></div></div>`;
+  const has = R.data && R.data.kind === R.type;
+  return pageHead('Reports', 'Activity reports for appraisal, IQAC/NAAC and HoD requests — build one for a period, a course, or a single section') +
+    `<div class="card" style="margin-bottom:14px"><label class="f">Report type</label><div class="rtypes">
+      ${typeBtn('period', 'Activity report', 'Teaching, exams, mentoring, research, projects and administration for a period')}
+      ${typeBtn('course', 'By course', 'Syllabus coverage, work diary, extra classes and evaluations of one course')}
+      ${typeBtn('section', 'By section', 'Every entry of one section, e.g. all exam duties or publications')}</div></div>
+    <div class="card" style="margin-bottom:18px">${form}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn" onclick="generateReport()">Generate report</button>
+      ${has ? `<button class="btn ghost" onclick="printReport()">Print / Save as PDF</button><button class="btn ghost" onclick="downloadReportText()">Download as text</button><button class="btn ghost" onclick="downloadReportCsv()">Download as CSV</button><button class="btn ghost" onclick="downloadReportXlsx()">Download as Excel</button>` : ''}</div></div>
+    <div id="reportPrintArea">${has ? renderReport(R.data) : ''}</div>`;
+};
+function repQuickRanges(){
+  const t = today(), y = +t.slice(0, 4), cs = currentSemester(), out = [];
+  if(cs) out.push(['This semester', cs.start, cs.end < t ? cs.end : t]);
+  const yr = state.data.years.find(x => WD.inRange(t, x.start, x.end)); if(yr) out.push(['This academic year', yr.start, t]);
+  out.push(['Calendar year ' + y, y + '-01-01', t], ['Last 30 days', WD.addDays(t, -29), t], ['This month', t.slice(0, 8) + '01', t]);
+  return out;
+}
+
+function generateReport(){
+  const R = state.rep; repDefaults();
+  if(R.from && R.to && R.to < R.from) return toast('“To” is before “From”.', true);
+  const p = state.settings.profile, stamp = new Date().toLocaleString('en-IN', { timeZone: TZ, day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  if(R.type === 'period'){
+    const sections = {};
+    PERIOD_ORDER.forEach(([, keys]) => keys.forEach(k => sections[k] = sectionRows(k, R.from, R.to)));
+    R.data = { kind:'period', from:R.from, to:R.to, stamp, profile:p, sections, teaching: teachingSummary(R.from, R.to) };
+  } else if(R.type === 'course'){
+    const c = WD.byId(state.data, 'courses', R.courseId); if(!c) return toast('Choose a course', true);
+    const code = (c.code || '').toLowerCase();
+    R.data = { kind:'course', from:R.from, to:R.to, stamp, profile:p, course:c, coverage: WD.courseCoverage(state.data, c),
+      teaching: teachingSummary(R.from, R.to).rows.find(x => x.id === c.id),
+      diary: sectionRows('diary', R.from, R.to, r => r.courseId === c.id), extra: sectionRows('extraClasses', R.from, R.to, r => r.courseId === c.id),
+      evals: sectionRows('evaluations', '', '', r => code && String(r.paper || '').toLowerCase().includes(code)) };
+  } else {
+    R.data = { kind:'section', from:R.from, to:R.to, stamp, profile:p, key:R.section, label: RS[R.section].label, rows: sectionRows(R.section, R.from, R.to) };
+  }
+  rerender();
+  setTimeout(() => { const el = $('#reportPrintArea'); if(el) el.scrollIntoView({ behavior:'smooth' }); }, 80);
+}
+function teachingSummary(from, to){
+  const rows = state.data.courses.map(c => {
+    const ents = state.data.diary.filter(d => d.courseId === c.id && (!from || d.date >= from) && (!to || d.date <= to));
+    const done = ents.filter(d => d.status === 'Conducted');
+    const att = done.filter(d => +d.total);
+    return { id:c.id, name: courseName(c.id), cls: c.classLabel || '', kind: c.kind || '', classes: done.length, hours: done.reduce((a, d) => a + WD.entryHours(d), 0),
+      extra: done.filter(d => d.kind && d.kind !== 'Regular').length, notHeld: ents.filter(d => d.status !== 'Conducted').length,
+      coverage: WD.courseCoverage(state.data, c).pct, attendance: att.length ? Math.round(att.reduce((a, d) => a + (+d.present || 0) / (+d.total), 0) / att.length * 100) : null };
+  }).filter(r => r.classes || r.notHeld);
+  return { rows, classes: rows.reduce((a, r) => a + r.classes, 0), hours: rows.reduce((a, r) => a + r.hours, 0) };
+}
+
+/* ---------- rendering ---------- */
+const period = d => (d.from || d.to) ? `${d.from ? fdate(d.from) : 'Start'} — ${d.to ? fdate(d.to) : 'Present'}` : 'All dates';
+function repHead(title, d){
+  const p = d.profile;
+  return `<div class="report-head"><div class="report-eyebrow">${esc(title)}</div>
+    <div class="report-who">${esc(p.name || '')}${p.designation ? ', ' + esc(p.designation) : ''}</div>
+    <div class="report-meta">${esc([p.department, p.institution].filter(Boolean).join(', '))}</div>
+    <div class="report-meta">Period: ${esc(period(d))} · Generated ${esc(d.stamp)}</div></div>`;
+}
+const repEnd = () => `<div class="report-end"><div class="report-end-rule">----- End of Report -----</div><div class="report-end-note">This is a system-generated report; hence, no signature is required.</div></div>`;
+function repTable(rows, opts){
+  opts = opts || {};
+  const ex = rows.find(r => r.extra) ? Object.keys(rows.find(r => r.extra).extra) : [];
+  return `<div class="report-tw"><table class="report-table"><thead><tr><th>#</th><th>Date</th><th>${esc(opts.titleLabel || 'Title')}</th>${ex.map(k => `<th>${esc(k)}</th>`).join('')}<th>Status</th><th>Details</th></tr></thead><tbody>
+    ${rows.map((r, i) => `<tr><td>${i + 1}</td><td style="white-space:nowrap">${r.date ? fdate(r.date) : '—'}</td><td>${esc(r.title)}</td>${ex.map(k => `<td style="white-space:nowrap">${esc(r.extra ? r.extra[k] : '')}</td>`).join('')}<td>${esc(r.status)}</td><td>${esc(String(r.detail || '').slice(0, 400))}${r.docs && r.docs.length ? `<div class="report-links">${r.docs.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || linkKind(x.url) + ' link')}</a>`).join(' · ')}</div>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function repBlock(label, rows, opts){
+  if(!rows.length && !state.rep.includeEmpty) return '';
+  return `<h3 class="report-section-title">${esc(label)} <span class="report-count">${rows.length}</span></h3>${rows.length ? repTable(rows, opts) : `<p class="report-empty">No entries in this period.</p>`}`;
+}
+function teachingTable(t){
+  if(!t.rows.length) return `<p class="report-empty">No classes logged in this period.</p>`;
+  return `<div class="report-tw"><table class="report-table"><thead><tr><th>Course</th><th>Class</th><th>Type</th><th>Classes taken</th><th>Hours</th><th>Extra</th><th>Not held</th><th>Syllabus covered</th><th>Avg attendance</th></tr></thead><tbody>
+    ${t.rows.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.cls)}</td><td>${esc(r.kind)}</td><td>${r.classes}</td><td>${+r.hours.toFixed(2)}</td><td>${r.extra}</td><td>${r.notHeld}</td><td>${r.coverage === null ? '—' : r.coverage + '%'}</td><td>${r.attendance === null ? '—' : r.attendance + '%'}</td></tr>`).join('')}
+    <tr class="tot"><td colspan="3"><b>Total</b></td><td><b>${t.classes}</b></td><td><b>${+t.hours.toFixed(2)}</b></td><td colspan="4"></td></tr></tbody></table></div>`;
+}
+function summaryTable(d){
+  const rows = []; PERIOD_ORDER.forEach(([, keys]) => keys.forEach(k => rows.push([RS[k].label, d.sections[k].length])));
+  const pubs = d.sections.publications;
+  rows.push(['Papers published', pubs.filter(x => x.status === 'Published').length], ['Teaching hours', +d.teaching.hours.toFixed(1)]);
+  const total = PERIOD_ORDER.reduce((a, [, ks]) => a + ks.reduce((b, k) => b + d.sections[k].length, 0), 0);
+  return `<h3 class="report-section-title">Activity summary</h3><div class="report-tw"><table class="report-table"><thead><tr><th>Section</th><th>Entries</th><th>Section</th><th>Entries</th></tr></thead><tbody>
+    ${rows.filter((_, i) => i % 2 === 0).map((r, i) => { const rt = rows[i * 2 + 1]; return `<tr><td>${esc(r[0])}</td><td>${r[1]}</td><td>${rt ? esc(rt[0]) : ''}</td><td>${rt ? rt[1] : ''}</td></tr>`; }).join('')}
+    <tr class="tot"><td><b>Total entries</b></td><td colspan="3"><b>${total}</b></td></tr></tbody></table></div>`;
+}
+function renderReport(d){
+  if(d.kind === 'period'){
+    let body = summaryTable(d) + `<h3 class="report-section-title">Teaching summary</h3>` + teachingTable(d.teaching);
+    PERIOD_ORDER.forEach(([group, keys]) => {
+      const parts = keys.map(k => (k === 'diary' && state.rep.fullDiary === false) ? '' : repBlock(RS[k].label, d.sections[k], { titleLabel: k === 'diary' || k === 'extraClasses' ? 'Course' : 'Title' })).join('');
+      if(parts) body += `<div class="report-group">${esc(group)}</div>` + parts;
+    });
+    return `<div class="report-doc">${repHead('Faculty Activity Report', d)}${body}${repEnd()}</div>`;
+  }
+  if(d.kind === 'course'){
+    const c = d.course, cv = d.coverage, t = d.teaching;
+    const cov = cv.units.length ? `<div class="report-tw"><table class="report-table"><thead><tr><th>Unit</th><th>Planned hours</th><th>Hours taken</th><th>Covered</th></tr></thead><tbody>${cv.units.map(u => `<tr><td>${esc(u.title)}</td><td>${u.hours || '—'}</td><td>${+u.done.toFixed(2)}</td><td>${u.hours ? Math.min(100, Math.round(u.done / u.hours * 100)) + '%' : '—'}</td></tr>`).join('')}<tr class="tot"><td><b>Overall</b></td><td><b>${cv.planned}</b></td><td><b>${+cv.total.toFixed(2)}</b></td><td><b>${cv.pct === null ? '—' : cv.pct + '%'}</b></td></tr></tbody></table></div>` : `<p class="report-empty">No syllabus units recorded for this course.</p>`;
+    const facts = `<dl class="report-kv"><dt>Class</dt><dd>${esc(c.classLabel || '—')}</dd><dt>Type / credits</dt><dd>${esc([c.kind, c.credits && c.credits + ' credits'].filter(Boolean).join(' · ') || '—')}</dd><dt>Semester</dt><dd>${esc((WD.byId(state.data, 'semesters', c.semesterId) || {}).name || '—')}</dd><dt>Classes taken</dt><dd>${t ? t.classes + ' (' + (+t.hours.toFixed(2)) + ' h)' : 0}${t && t.notHeld ? ' · ' + t.notHeld + ' not held' : ''}</dd><dt>Average attendance</dt><dd>${t && t.attendance !== null ? t.attendance + '%' : '—'}</dd></dl>`;
+    const keepEmpty = state.rep.includeEmpty; state.rep.includeEmpty = true;
+    const body = `<h2 class="report-student-name">${esc(courseName(c.id))}</h2>${facts}<h3 class="report-section-title">Syllabus coverage</h3>${cov}${repBlock('Work diary', d.diary, { titleLabel:'Course' })}${repBlock('Extra / additional classes', d.extra, { titleLabel:'Course' })}${repBlock('Evaluations', d.evals)}`;
+    state.rep.includeEmpty = keepEmpty;
+    return `<div class="report-doc">${repHead('Course Report', d)}${body}${repEnd()}</div>`;
+  }
+  return `<div class="report-doc">${repHead(d.label + ' Report', d)}${d.rows.length ? repTable(d.rows) : `<p class="report-empty">Nothing recorded${d.from || d.to ? ' in this period' : ''}.</p>`}<div class="report-meta" style="margin-top:8px">${d.rows.length} entr${d.rows.length === 1 ? 'y' : 'ies'}</div>${repEnd()}</div>`;
+}
+
+/* ---------- output ---------- */
+function repSubject(d){ return d.kind === 'course' ? (d.course.code || d.course.title) : d.kind === 'section' ? d.label : 'Activity Report'; }
+function repStamp(){
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(new Date());
+  const g = t => (p.find(x => x.type === t) || {}).value; return `${g('day')}-${g('month')}-${g('year')}-${g('hour')}${g('minute')}`;
+}
+function repFile(d, ext){ return (String(repSubject(d)).replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Report') + '-Workdesk-' + repStamp() + (ext ? '.' + ext : ''); }
+function printReport(){ const d = state.rep.data, o = document.title; if(d) document.title = repFile(d, ''); document.body.classList.add('printing-report'); window.print(); setTimeout(() => { document.title = o; document.body.classList.remove('printing-report'); }, 1000); }
+function repFlat(d){
+  // [{section, date, title, status, detail}] for text/CSV/Excel
+  const out = [];
+  const push = (sec, rows) => rows.forEach(r => out.push(Object.assign({ Section: sec, Date: r.date || '', Title: r.title, Status: r.status, Details: r.detail || '' }, r.extra || {}, r.docs && r.docs.length ? { Links: r.docs.map(x => x.url).join(' ') } : {})));
+  if(d.kind === 'period'){
+    d.teaching.rows.forEach(r => out.push({ Section: 'Teaching summary', Title: r.name, Status: r.kind, Details: `${r.classes} classes, ${+r.hours.toFixed(2)} h, coverage ${r.coverage === null ? '—' : r.coverage + '%'}, attendance ${r.attendance === null ? '—' : r.attendance + '%'}` }));
+    PERIOD_ORDER.forEach(([, ks]) => ks.forEach(k => { if(!(k === 'diary' && state.rep.fullDiary === false)) push(RS[k].label, d.sections[k]); }));
+  } else if(d.kind === 'course'){
+    d.coverage.units.forEach(u => out.push({ Section: 'Syllabus coverage', Title: u.title, Details: `${+u.done.toFixed(2)} of ${u.hours} h` }));
+    push('Work diary', d.diary); push('Extra classes', d.extra); push('Evaluations', d.evals);
+  } else push(d.label, d.rows);
+  return out;
+}
+function downloadReportText(){
+  const d = state.rep.data; if(!d) return;
+  const p = d.profile, L = [];
+  L.push(d.kind === 'period' ? 'FACULTY ACTIVITY REPORT' : d.kind === 'course' ? 'COURSE REPORT — ' + courseName(d.course.id) : d.label.toUpperCase() + ' REPORT');
+  L.push([p.name, p.designation].filter(Boolean).join(', '), [p.department, p.institution].filter(Boolean).join(', '), 'Period: ' + period(d) + ' · Generated ' + d.stamp, '');
+  let cur = '';
+  repFlat(d).forEach(r => { if(r.Section !== cur){ cur = r.Section; L.push('', cur.toUpperCase(), '-'.repeat(cur.length)); } L.push(`${r.Date ? fdate(r.Date) + ' | ' : ''}${r.Title}${r.Status ? ' | ' + r.Status : ''}${r.Details ? ' | ' + r.Details : ''}`); });
+  L.push('', '----- End of Report -----', 'This is a system-generated report; hence, no signature is required.');
+  download(repFile(d, 'txt'), L.join('\n'), 'text/plain');
+}
+function downloadReportCsv(){
+  const d = state.rep.data; if(!d) return;
+  const rows = repFlat(d), cols = [...new Set(rows.flatMap(r => Object.keys(r)))];
+  const q = v => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  download(repFile(d, 'csv'), '﻿' + [cols.join(','), ...rows.map(r => cols.map(c => q(r[c])).join(','))].join('\n'), 'text/csv');
+}
+function downloadReportXlsx(){
+  const d = state.rep.data; if(!d) return;
+  if(typeof XLSX === 'undefined') return toast('Excel library did not load — check your connection.', true);
+  const wb = XLSX.utils.book_new(), by = {};
+  repFlat(d).forEach(r => (by[r.Section] = by[r.Section] || []).push(r));
+  Object.keys(by).forEach(s => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(by[s].map(r => { const o = Object.assign({}, r); delete o.Section; return o; })), s.replace(/[\\/?*\[\]:]/g, '').slice(0, 31)));
+  if(!wb.SheetNames.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Note: 'No entries' }]), 'Report');
+  XLSX.writeFile(wb, repFile(d, 'xlsx'));
+}
+
 
 /* ---------- update notice (same behaviour as the logbook) ---------- */
 let _lastUpdateCheck = 0;
@@ -2506,7 +3072,7 @@ async function checkForUpdate(){
     }
   }catch(e){}
 }
-document.addEventListener('visibilitychange', () => { if(!document.hidden){ checkForUpdate(); if(REMOTE && state.auth && !store.outbox.length) store.load().then(() => { if(safeToRerender()) rerender(); }).catch(() => {}); } });
+document.addEventListener('visibilitychange', () => { if(!document.hidden){ checkForUpdate(); if(REMOTE && state.auth && !state.readonly && !store.outbox.length) store.load().then(() => { if(safeToRerender()) rerender(); }).catch(() => {}); } });
 // keep "today" fresh if the app stays open past midnight / through the day
 function safeToRerender(){ const a = document.activeElement; return !$('#ov') && !$('#drawerWrap') && document.visibilityState === 'visible' && !(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) && !$('#setGeneral') && !$('#setRem') && !$('#ridForm'); }
 setInterval(() => { if(safeToRerender()) rerender(); }, 5 * 60 * 1000);
