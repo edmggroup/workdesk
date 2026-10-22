@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-10-06-5">
-<meta name="app-version" content="1.2">
+<meta name="app-build" content="2026-10-22-2">
+<meta name="app-version" content="1.4">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -422,6 +422,23 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
   .tb-btn,.signout{padding:6px 8px}
 }
 
+/* ---------- notepad ---------- */
+.notepad{border-top:3px solid var(--c-reminder)}
+.note-compose textarea{resize:vertical;min-height:72px;background:var(--surface-2)}
+.note-compose-bar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap}
+.note-list{display:flex;flex-direction:column;margin-top:10px}
+.note{padding:10px 0;border-top:1px solid var(--border)}
+.note-grid .note{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+.note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.note.pinned .note-text{font-weight:600}
+.note.filed .note-text{color:var(--ink-soft)}
+.note-text{font-size:14px;line-height:1.5;white-space:normal;word-break:break-word}
+.note-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:12px}
+.note-when{color:var(--c-reminder);font-weight:600}
+.note-filed{font-size:12px;color:var(--ok)}
+.note-actions{margin-left:auto;display:flex;gap:2px;align-items:center;position:relative}
+.note-menu{right:0;left:auto;top:calc(100% + 4px);max-height:360px;overflow:auto;min-width:240px}
+
 </style>
 </head>
 <body>
@@ -486,7 +503,8 @@ var WD = (function () {
     'mentees', 'mentorMeetings',
     'plans', 'publications', 'collaborations', 'conferences', 'reviews', 'contacts', 'metrics',
     'projects',
-    'responsibilities', 'committees', 'meetings', 'actions', 'reminders'
+    'responsibilities', 'committees', 'meetings', 'actions', 'reminders',
+    'notes'
   ];
 
   /* Reminder categories: label, default lead time (days before), default on. */
@@ -497,7 +515,7 @@ var WD = (function () {
     exam:        { label: 'Exam duties',                   lead: 2,  on: true },
     evaluation:  { label: 'Evaluation deadlines',          lead: 3,  on: true },
     mentoring:   { label: 'Mentoring meetings & follow-ups', lead: 1, on: true },
-    meeting:     { label: 'Committee meetings',            lead: 1,  on: true },
+    meeting:     { label: 'Meetings (committee, department, general)',            lead: 1,  on: true },
     action:      { label: 'Action items',                  lead: 2,  on: true },
     reminder:    { label: 'Personal reminders',            lead: 0,  on: true },
     review:      { label: 'Peer reviews due',              lead: 3,  on: true },
@@ -695,6 +713,13 @@ var WD = (function () {
     };
   }
 
+  /* Name of any meeting: committee name for committee meetings, else its type. */
+  function meetingTitle(data, m) {
+    var c = m.committeeId ? byId(data, 'committees', m.committeeId) : null;
+    var head = c ? c.name : (m.kind || 'Meeting');
+    return head + (m.title ? ': ' + m.title : '');
+  }
+
   /* ---------------- reminders & agenda ---------------- */
   function nextOccurrence(r, from) {
     if (!validDate(r.date)) return null;
@@ -748,7 +773,7 @@ var WD = (function () {
       eachDay(cStart, cEnd > to ? to : cEnd, function (d) {
         sessionsOn(data, settings, d).forEach(function (se) {
           items.push({ date: d, time: se.start, end: se.end, cat: 'classes', title: cname(se.courseId),
-            detail: [se.kind !== 'Regular' ? se.kind + ' class' : '', se.room ? 'Room ' + se.room : '', se.batch ? 'Batch ' + se.batch : ''].filter(Boolean).join(' · '),
+            detail: [se.kind !== 'Regular' ? se.kind + ' class' : '', se.room ? (/^(room|lab|hall|block|online)/i.test(se.room) ? se.room : 'Room ' + se.room) : '', se.batch ? 'Batch ' + se.batch : ''].filter(Boolean).join(' · '),
             ref: { coll: se.extraId ? 'extraClasses' : 'slots', id: se.extraId || se.slotId }, session: se, overdue: false });
         });
       });
@@ -779,8 +804,7 @@ var WD = (function () {
     // committee meetings
     list(data, 'meetings').forEach(function (m) {
       if (m.status !== 'Scheduled') return;
-      var c = byId(data, 'committees', m.committeeId);
-      push('meeting', m.date, m.time, (c ? c.name : 'Meeting') + (m.title ? ': ' + m.title : ''), m.venue || '', { coll: 'meetings', id: m.id }, false);
+      push('meeting', m.date, m.time, meetingTitle(data, m), [m.with, m.venue].filter(Boolean).join(' · '), { coll: 'meetings', id: m.id }, false);
     });
     // action items
     list(data, 'actions').forEach(function (a) {
@@ -881,7 +905,7 @@ var WD = (function () {
     semesterFor: semesterFor, holidayOn: holidayOn, eventsOn: eventsOn, dayStatus: dayStatus, dayKeyFor: dayKeyFor,
     sessionsOn: sessionsOn, diaryIndex: diaryIndex, pendingDiary: pendingDiary, resetCache: resetCache,
     parseUnits: parseUnits, entryHours: entryHours, courseCoverage: courseCoverage,
-    nextOccurrence: nextOccurrence, buildAgenda: buildAgenda, nudges: nudges
+    nextOccurrence: nextOccurrence, meetingTitle: meetingTitle, buildAgenda: buildAgenda, nudges: nudges
   };
 })();
 
@@ -906,6 +930,10 @@ const DAY_OPTIONS = () => state.settings.timetable.mode === 'dayorder'
   : ['Mon','Tue','Wed','Thu','Fri','Sat'];
 
 const SCHEMA = {
+  notes: { label:'Notes', one:'note',
+    fields:[ {k:'text', label:'Note', type:'textarea', req:true, full:true, rows:5} ],
+    cols:['createdAt','text','filed'], sort:['createdAt','desc'] },
+
   years: { label:'Academic years', one:'academic year', icon:'calendar',
     fields:[
       {k:'label', label:'Academic year', type:'text', req:true, ph:'2026–27'},
@@ -1212,10 +1240,12 @@ const SCHEMA = {
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['name','role','level','frequency','nextMeeting','docs','status'], sort:['name','asc'] },
 
-  meetings: { label:'Committee meetings', one:'meeting',
+  meetings: { label:'Meetings', one:'meeting',
     fields:[
-      {k:'committeeId', label:'Committee', type:'ref', ref:'committees', req:true},
-      {k:'title', label:'Meeting', type:'text', ph:'3rd meeting / Budget review'},
+      {k:'kind', label:'Type of meeting', type:'select', opts:['Department meeting','Committee meeting','School / Faculty meeting','Campus / University meeting','Staff meeting','Meeting with HoD / Dean','Research group meeting','Project review meeting','Parent / student meeting','External / industry meeting','Online meeting','Other'], def:'Department meeting'},
+      {k:'committeeId', label:'Committee (only for committee meetings)', type:'ref', ref:'committees', optional:true},
+      {k:'with', label:'Organised by / with', type:'text', ph:'HoD, Dean, IQAC, funding agency…'},
+      {k:'title', label:'Subject', type:'text', ph:'Budget review, NAAC preparation, syllabus revision…'},
       {k:'date', label:'Date', type:'date', req:true},
       {k:'time', label:'Time', type:'time'},
       {k:'venue', label:'Venue / link', type:'text'},
@@ -1224,7 +1254,7 @@ const SCHEMA = {
       {k:'minutes', label:'Minutes / decisions', type:'textarea', full:true}
 ,
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
-    ], cols:['date','time','committeeId','title','venue','docs','status'], sort:['date','desc'] },
+    ], cols:['date','time','meetingName','venue','docs','status'], sort:['date','desc'] },
 
   actions: { label:'Action items', one:'action item',
     fields:[
@@ -1256,7 +1286,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -1487,7 +1517,7 @@ async function backgroundRefresh(){
   }
 }
 
-const openJsonLink = `<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:13.5px" class="muted">Have a backup file? <label class="linkbtn" style="cursor:pointer">Open it (.json)<input type="file" accept=".json,application/json" hidden onchange="openBackupFile(this.files[0])"></label> — read-only, works offline.</div>`;
+const openJsonLink = ''; // backup files are opened from Backup & restore
 
 function renderLogin(mode, err, info){
   $('#app').style.display = 'none'; $('#login').style.display = 'flex';
@@ -1648,16 +1678,16 @@ async function showInstallHelp(){
 }
 /* ============================ SHELL ============================ */
 const NAV = [
-  ['dashboard','Dashboard'], ['calendar','Calendar'], ['agenda','Reminders & alerts'], ['academic','Academic calendar'],
+  ['dashboard','Dashboard'], ['notes','Notepad'], ['calendar','Calendar'], ['agenda','Reminders & alerts'], ['academic','Academic calendar'],
   { g:'Teaching', items:[['timetable','Timetable'],['diary','Work diary'],['courses','Courses & syllabus']] },
   { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations']] },
   { g:'Mentoring', items:[['mentees','Mentees'],['mentorMeetings','Mentoring meetings']] },
   { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
   ['projects','Projects & grants'],
-  { g:'Administration', items:[['responsibilities','Responsibilities'],['committees','Committees & meetings'],['actions','Action items'],['reminders','Reminders']] },
+  { g:'Administration', items:[['responsibilities','Responsibilities'],['meetings','Meetings'],['committees','Committees'],['actions','Action items'],['reminders','Reminders']] },
   ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', notes:'reminder', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
 const NAV_ICON = {
   dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
   calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
@@ -1669,6 +1699,7 @@ const NAV_ICON = {
   Research:'<path d="M8 2v6L3 16a1 1 0 001 1.5h12A1 1 0 0017 16l-5-8V2M7 2h6M5.5 12h9"/>',
   projects:'<path d="M3 6h14v11H3zM7 6V4h6v2M3 11h14"/>',
   Administration:'<path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h4"/>',
+  notes:'<path d="M5 3h10v14H5zM8 7h4M8 10h4M8 13h2"/>',
   reports:'<path d="M5 2h7l4 4v12H5zM12 2v4h4M8 14v-3M11 14V9M14 14v-5"/>',
   settings:'<circle cx="10" cy="10" r="2.6"/><path d="M10 2v2.2M10 15.8V18M2 10h2.2M15.8 10H18M4.3 4.3l1.6 1.6M14.1 14.1l1.6 1.6M4.3 15.7l1.6-1.6M14.1 5.9l1.6-1.6"/>',
   backup:'<path d="M10 3v9M6 8l4 4 4-4M4 14v3h12v-3"/>'
@@ -1763,6 +1794,7 @@ function refLabel(coll, r){
 /* A human label for any record (search results, delete confirmations). */
 function recordLabel(coll, r){
   if(!r) return '';
+  if(coll === 'notes') return String(r.text || '').split('\n')[0].slice(0, 80);
   if(typeof RS !== 'undefined' && RS[coll]){ const t = RS[coll].title(r); const d = RS[coll].date(r); return [t, d && WD.validDate(d) ? fdate(d) : ''].filter(Boolean).join(' · '); }
   if(coll === 'slots') return `${courseName(r.courseId, true)} · ${r.day} ${r.start || ''}`;
   return r.name || r.label || r.title || '';
@@ -1882,7 +1914,7 @@ function findClash(coll, rec){
 
 /* hooks: extra buttons in the modal footer, and post-save behaviour */
 const FORM_EXTRAS = {
-  meetings: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('${esc((WD.byId(state.data,'committees',rec.committeeId)||{}).name || 'Meeting')} — ${fdate(rec.date)}')">+ Action item from this meeting</button>` : '',
+  meetings: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('${esc(WD.meetingTitle(state.data, rec)).replace(/'/g, '&#39;')} — ${fdate(rec.date)}')">+ Action item from this meeting</button>` : '',
   mentorMeetings: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('Mentoring meeting — ${fdate(rec.date)}')">+ Action item</button>` : '',
   diary: rec => `<button type="button" class="btn ghost sm" onclick="copyLastTopic()">Continue from last class</button>`,
   extraClasses: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="logSessionFromExtra('${rec.id}')">Log in diary</button>` : ''
@@ -1893,6 +1925,7 @@ function editRecord(coll, id, preset){
   const sch = SCHEMA[coll];
   const existing = id ? WD.byId(state.data, coll, id) : null;
   const rec = Object.assign({}, existing || {}, preset || {});
+  if(coll === 'meetings' && rec.committeeId && !rec.kind) rec.kind = 'Committee meeting'; // meetings saved before types existed
   openModal(`<div class="mh"><h2>${existing ? 'Edit' : 'Add'} ${esc(sch.one)}</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
     <form id="recForm" novalidate><div class="mb"><div id="formErr"></div><div class="fg">${sch.fields.map(f => fieldHtml(coll, f, rec)).join('')}</div></div>
     <div class="mf"><div class="left">${existing ? `<button type="button" class="btn danger sm" onclick="confirmDelete('${coll}','${id}')">Delete</button>` : ''}${FORM_EXTRAS[coll] ? FORM_EXTRAS[coll](rec) : ''}</div>
@@ -1916,9 +1949,11 @@ function editRecord(coll, id, preset){
       $('[data-f="courseId"]', form).outerHTML = fieldHtml(coll, sch.fields.find(f => f.k === 'courseId'), tmp);
     });
   }
+  if(coll === 'meetings' && form.elements.committeeId) form.elements.committeeId.addEventListener('change', () => { if(form.elements.committeeId.value) form.elements.kind.value = 'Committee meeting'; });
   form.onsubmit = guard(async ev => {
     ev.preventDefault();
     const out = readForm(coll, form, modalState.base);
+    if(coll === 'meetings' && out.committeeId && !out.kind) out.kind = 'Committee meeting';
     if(coll === 'diary'){
       if((out.hours === '' || out.hours == null) && out.start && out.end) out.hours = String(WD.hoursBetween(out.start, out.end));
       if(out.status !== 'Conducted') out.hours = '0';
@@ -1928,7 +1963,8 @@ function editRecord(coll, id, preset){
     const err = validate(coll, out);
     if(err){ $('#formErr').innerHTML = `<div class="err">${esc(err)}</div>`; return; }
     if(existing && coll === 'diary' && existing.sessionKey) out.sessionKey = existing.sessionKey;
-    await store.upsert(coll, out);
+    const saved = await store.upsert(coll, out);
+    if(preset && preset._fromNote) markNoteFiled(preset._fromNote, coll, saved.id);
     closeModal(); toast(`${sch.one[0].toUpperCase() + sch.one.slice(1)} saved`);
   });
 }
@@ -1947,12 +1983,13 @@ const VIRTUAL = {
     return '';
   },
   paperworkProg: (coll, r) => { const a = r.paperwork || []; if(!a.length) return '<span class="faint">—</span>'; const d = a.filter(x => x.done).length, od = a.filter(x => !x.done && x.due && x.due < today()).length; return `<div style="min-width:90px">${bar(d / a.length * 100, od ? 'bad' : 'ok')}<div class="faint" style="font-size:11.5px;margin-top:3px">${d}/${a.length}${od ? ` · <span style="color:var(--bad)">${od} overdue</span>` : ''}</div></div>`; },
+  meetingName: (coll, r) => `<b style="font-weight:600">${esc(WD.meetingTitle(state.data, r))}</b>${r.with ? `<div class="faint" style="font-size:12px">${esc(r.with)}</div>` : ''}`,
   lastMet: (coll, r) => { const d = lastMetDate(r.id); if(!d) return '<span class="chip warn">Not met yet</span>'; const n = WD.diffDays(d, today()); return `${fdate(d)} <span class="faint">(${n}d)</span>`; },
   nextMeeting: (coll, r) => { const m = state.data.meetings.filter(x => x.committeeId === r.id && x.status === 'Scheduled' && x.date >= today()).sort((a, b) => a.date < b.date ? -1 : 1)[0]; return m ? fdate(m.date) : '<span class="faint">—</span>'; },
   next: (coll, r) => { const d = WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : today()); return d ? `${fdate(d, 'dow')}${r.time ? ' ' + ftime(r.time) : ''}` : ''; },
   done: (coll, r) => (r.repeat || 'None') === 'None' ? (r.done ? chip('Done') : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')">Mark done</button>`) : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')" title="Skip to the next occurrence">Done for this time</button>`
 };
-const VIRTUAL_LABEL = { paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
+const VIRTUAL_LABEL = { filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
 function lastMetDate(menteeId){ let d = null; state.data.mentorMeetings.forEach(m => { if(m.status === 'Held' && (m.menteeIds || []).includes(menteeId) && (!d || m.date > d)) d = m.date; }); return d; }
 
 function cellHtml(coll, k, r){
@@ -2070,7 +2107,7 @@ function runSearch(q){
 document.addEventListener('click', e => { const p = $('#searchPanel'); if(p && !e.target.closest('.search')) p.classList.remove('open'); const m = $('#qaMenu'); if(m && !e.target.closest('#qaWrap')) m.remove(); });
 
 /* ============================ QUICK ADD ============================ */
-const QUICK = [['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Committee meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
+const QUICK = [['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
 function toggleQuick(){
   const w = $('#qaWrap'); const m = $('#qaMenu'); if(m) return m.remove();
   w.insertAdjacentHTML('beforeend', `<div class="menu" id="qaMenu">${QUICK.map(([c, l]) => `<button onclick="$('#qaMenu').remove();editRecord('${c}', null, ${c === 'diary' || c === 'reminders' || c === 'holidays' || c === 'schedule' ? `{date:'${today()}'}` : 'null'})">${esc(l)}</button>`).join('')}</div>`);
@@ -2192,7 +2229,7 @@ VIEWS.dashboard = () => {
     ${tile(confUp.length, 'Conferences', confUp[0] ? 'Next: ' + esc(confUp[0].title) + ' · ' + fdate(confUp[0].start, 'short') : confYear + ' attended in ' + t.slice(0, 4), 'conference', 'conferences')}
     ${tile(wsUp.length, 'Workshops & FDPs', wsUp[0] ? 'Next: ' + esc(wsUp[0].title) + ' · ' + fdate(wsUp[0].start, 'short') : wsYear + ' attended in ' + t.slice(0, 4), 'plan', 'conferences')}
     ${tile(revHand.length, 'Peer reviews in hand', nextRev ? 'Next due ' + fdate(nextRev.due, 'short') + (nextRev.due < t ? ' (overdue)' : '') : revYear + ' submitted in ' + t.slice(0, 4), 'review', 'reviews')}
-    ${tile(meetUp.length, 'Committee meetings', meetUp[0] ? 'Next: ' + esc(((WD.byId(state.data, 'committees', meetUp[0].committeeId) || {}).name || 'Meeting')) + ' · ' + fdate(meetUp[0].date, 'short') : 'None scheduled', 'meeting', 'committees', 'upcoming')}
+    ${tile(meetUp.length, 'Meetings', meetUp[0] ? 'Next: ' + esc(WD.meetingTitle(state.data, meetUp[0])) + ' · ' + fdate(meetUp[0].date, 'short') : 'None scheduled', 'meeting', 'meetings')}
     ${tile(mentUp.length, 'Mentoring meetings', mentUp[0] ? 'Next ' + fdate(mentUp[0].date, 'short') + (mentUp[0].time ? ' ' + ftime(mentUp[0].time) : '') : 'None scheduled', 'mentoring', 'mentorMeetings')}
     ${tile(dutyUp.length, 'Exam duties ahead', dutyUp[0] ? 'Next: ' + esc(dutyUp[0].dutyType || 'Duty') + ' · ' + fdate(dutyUp[0].date, 'short') : 'None assigned', 'exam', 'examDuties')}
   </div>`;
@@ -2202,7 +2239,7 @@ VIEWS.dashboard = () => {
   sessions.forEach(s => {
     const e = didx[s.key];
     const ended = (WD.minutes(s.end) || 0) <= now.mins;
-    todayItems.push({ sort: WD.minutes(s.start), html: `<div class="tli"><div class="tm">${ftime(s.start)}</div><div class="bd">${catDot('classes')}<div class="tt">${esc(courseName(s.courseId))}</div><div class="dt">${[ftime(s.start) + '–' + ftime(s.end), s.room && 'Room ' + s.room, s.batch && 'Batch ' + s.batch, s.kind !== 'Regular' && s.kind].filter(Boolean).map(esc).join(' · ')}</div></div>
+    todayItems.push({ sort: WD.minutes(s.start), html: `<div class="tli"><div class="tm">${ftime(s.start)}</div><div class="bd">${catDot('classes')}<div class="tt">${esc(courseName(s.courseId))}</div><div class="dt">${[ftime(s.start) + '–' + ftime(s.end), s.room && (/^(room|lab|hall|block|online)/i.test(s.room) ? s.room : 'Room ' + s.room), s.batch && 'Batch ' + s.batch, s.kind !== 'Regular' && s.kind].filter(Boolean).map(esc).join(' · ')}</div></div>
       <div class="rt">${e ? `<button class="btn ghost sm" onclick="editRecord('diary','${e.id}')">${e.status === 'Conducted' ? '✓ Logged' : esc(e.status)}</button>` : `<button class="btn ${ended ? '' : 'ghost'} sm" onclick="logSession('${s.key}')">Log</button>`}</div></div>` });
   });
   A.today.forEach(i => todayItems.push({ sort: WD.minutes(i.time) === null ? 2000 : WD.minutes(i.time), html: agendaItemHtml(i, false) }));
@@ -2267,7 +2304,7 @@ VIEWS.dashboard = () => {
   return `<div class="hello"><div><h1>${greeting()}${p.name ? ', ' + esc(p.name) : ''}</h1><div class="d">${fdate(t, 'long')}</div>${[p.designation, p.department, p.institution].filter(Boolean).length ? `<div class="d" style="font-size:13px">${esc([p.designation, p.department, p.institution].filter(Boolean).join(' · '))}</div>` : ''}</div>
     <div class="qa"><button class="btn sm" onclick="editRecord('diary',null,{date:'${t}'})">+ Log class</button><button class="btn ghost sm" onclick="editRecord('extraClasses',null,{date:'${t}'})">+ Extra class</button><button class="btn ghost sm" onclick="editRecord('reminders',null,{date:'${t}'})">+ Reminder</button><button class="btn ghost sm" onclick="editRecord('actions')">+ Action</button></div></div>
     ${setup}${semStrip}${tiles}
-    <div class="grid dash-main"><div class="grid" style="align-content:start">${attCard}${todayCard}${teachCard}</div><div class="grid" style="align-content:start">${upCard}${resCard}${projCard}</div></div>`;
+    <div class="grid dash-main"><div class="grid" style="align-content:start">${attCard}${todayCard}${teachCard}</div><div class="grid" style="align-content:start">${notepadCard()}${upCard}${resCard}${projCard}</div></div>`;
 };
 
 /* ---------------- CALENDAR ---------------- */
@@ -2583,18 +2620,24 @@ function gantt(){
 /* ---------------- ADMINISTRATION ---------------- */
 VIEWS.responsibilities = () => pageHead('Responsibilities & in-charges', `${state.data.responsibilities.filter(r => r.status !== 'Completed').length} active`) + listTable('responsibilities');
 VIEWS.committees = () => {
-  const tb = tabs('committees', [['committees','Committees'],['meetings','Meetings'],['upcoming','Upcoming & minutes pending']]);
+  const tb = tabs('committees', [['committees','Committees'],['meetings','Committee meetings']]);
+  const body = tb.cur === 'committees' ? listTable('committees')
+    : listTable('meetings', { filter: m => !!m.committeeId, preset: { date: today(), kind: 'Committee meeting' }, noToolbar: false });
+  return pageHead('Committees', 'Committees you serve on and their meetings. Department, school and other meetings are under Meetings.', `<button class="btn ghost sm" onclick="go('meetings')">All meetings →</button>`) + tb.html + body;
+};
+VIEWS.meetings = () => {
+  const t = today();
+  const tb = tabs('meetings', [['all','All meetings'],['upcoming','Upcoming & minutes pending']]);
   let body = '';
-  if(tb.cur === 'committees') body = listTable('committees');
-  else if(tb.cur === 'meetings') body = listTable('meetings', { preset: { date: today() } });
+  if(tb.cur === 'all') body = listTable('meetings', { preset: { date: t } });
   else {
-    const t = today();
-    const up = state.data.meetings.filter(m => m.status === 'Scheduled' && m.date >= t).sort((a, b) => a.date < b.date ? -1 : 1);
-    const noMin = state.data.meetings.filter(m => (m.status === 'Held' || (m.status === 'Scheduled' && m.date < t)) && !m.minutes);
-    const row = m => `<div class="tli click" onclick="editRecord('meetings','${m.id}')"><div class="tm">${fdate(m.date, 'short')}</div><div class="bd"><div class="tt">${esc((WD.byId(state.data, 'committees', m.committeeId) || {}).name || 'Meeting')}${m.title ? ' — ' + esc(m.title) : ''}</div><div class="dt">${[m.time && ftime(m.time), m.venue].filter(Boolean).map(esc).join(' · ')}</div></div><div class="rt">${chip(m.status)}</div></div>`;
+    const up = state.data.meetings.filter(m => m.status === 'Scheduled' && m.date >= t).sort((a, b) => (a.date + (a.time || '')) < (b.date + (b.time || '')) ? -1 : 1);
+    const noMin = state.data.meetings.filter(m => (m.status === 'Held' || (m.status === 'Scheduled' && m.date < t)) && !m.minutes).sort((a, b) => a.date < b.date ? 1 : -1);
+    const row = m => `<div class="tli click" onclick="editRecord('meetings','${m.id}')"><div class="tm">${fdate(m.date, 'short')}</div><div class="bd">${catDot('meeting')}<div class="tt">${esc(WD.meetingTitle(state.data, m))}</div><div class="dt">${[m.time && ftime(m.time), m.with, m.venue].filter(Boolean).map(esc).join(' · ')}</div></div><div class="rt">${chip(m.status)}</div></div>`;
     body = `<div class="grid g2"><div class="card"><h3>Upcoming meetings</h3>${up.length ? `<div class="tl">${up.map(row).join('')}</div>` : '<div class="empty" style="padding:10px">None scheduled.</div>'}</div><div class="card"><h3>Minutes not recorded</h3>${noMin.length ? `<div class="tl">${noMin.map(row).join('')}</div>` : '<div class="empty" style="padding:10px">All recorded.</div>'}</div></div>`;
   }
-  return pageHead('Committees & meetings', 'Committees you serve on, their meetings, minutes and resulting action items') + tb.html + body;
+  const up = state.data.meetings.filter(m => m.status === 'Scheduled' && m.date >= t).length;
+  return pageHead('Meetings', `Department, school, committee, project, parent and any other meetings — with agenda, minutes, documents and action items${up ? ` · ${up} coming up` : ''}`) + tb.html + body;
 };
 VIEWS.actions = () => {
   const open = state.data.actions.filter(a => a.status !== 'Done');
@@ -2809,10 +2852,13 @@ function buildSample(){
   const cm2 = mk({ name: 'IQAC — School of Sciences', role: 'Member', level: 'School', chair: 'Dean', frequency: 'Monthly', status: 'Active' });
   const cm3 = mk({ name: 'Research Advisory Committee', role: 'Convener', level: 'Department', frequency: 'As needed', status: 'Active' });
   out.committees.push(cm1, cm2, cm3);
-  out.meetings.push(mk({ committeeId: cm2.id, title: 'Monthly review', date: D(-26), time: '15:00', venue: 'Dean’s conference room', status: 'Held', agenda: 'AQAR data; FDP calendar', minutes: 'Criterion III data due by month end. Each dept to propose one FDP.', docs: [{ label: 'Minutes (signed)', url: 'https://drive.google.com/file/d/EXAMPLE' }] }));
-  out.meetings.push(mk({ committeeId: cm2.id, title: 'Monthly review', date: D(4), time: '15:00', venue: 'Dean’s conference room', status: 'Scheduled' }));
-  out.meetings.push(mk({ committeeId: cm1.id, title: 'BoS — syllabus revision', date: D(17), time: '10:30', venue: 'Department seminar hall', status: 'Scheduled', agenda: 'Revise PHY231 syllabus; add energy-materials elective' }));
-  out.meetings.push(mk({ committeeId: cm3.id, title: 'Scholar progress review', date: D(-10), time: '14:00', venue: 'Online', status: 'Held' }));
+  out.meetings.push(mk({ kind: 'Committee meeting', committeeId: cm2.id, title: 'Monthly review', date: D(-26), time: '15:00', venue: 'Dean’s conference room', status: 'Held', agenda: 'AQAR data; FDP calendar', minutes: 'Criterion III data due by month end. Each dept to propose one FDP.', docs: [{ label: 'Minutes (signed)', url: 'https://drive.google.com/file/d/EXAMPLE' }] }));
+  out.meetings.push(mk({ kind: 'Committee meeting', committeeId: cm2.id, title: 'Monthly review', date: D(4), time: '15:00', venue: 'Dean’s conference room', status: 'Scheduled' }));
+  out.meetings.push(mk({ kind: 'Committee meeting', committeeId: cm1.id, title: 'BoS — syllabus revision', date: D(17), time: '10:30', venue: 'Department seminar hall', status: 'Scheduled', agenda: 'Revise PHY231 syllabus; add energy-materials elective' }));
+  out.meetings.push(mk({ kind: 'Committee meeting', committeeId: cm3.id, title: 'Scholar progress review', date: D(-10), time: '14:00', venue: 'Online', status: 'Held' }));
+  out.meetings.push(mk({ kind: 'Department meeting', title: 'Timetable for even semester', with: 'HoD', date: D(2), time: '12:30', venue: 'Department staff room', status: 'Scheduled', agenda: 'Workload allocation; lab slots' }));
+  out.meetings.push(mk({ kind: 'Project review meeting', title: 'Seed-money progress review', with: 'Centre for Research', date: D(-15), time: '11:00', venue: 'Online', status: 'Held', minutes: 'Progress accepted; final report due on time.' }));
+  out.meetings.push(mk({ kind: 'Parent / student meeting', title: 'Mentee parents — attendance', with: 'Class teacher', date: D(9), time: '10:00', venue: 'Room 812', status: 'Scheduled' }));
   out.actions.push(mk({ title: 'Send Criterion III publication list to IQAC', due: D(-3), priority: 'High', status: 'Open', source: 'IQAC monthly review' }));
   out.actions.push(mk({ title: 'Draft revised PHY231 syllabus for BoS', due: D(12), priority: 'Medium', status: 'In progress', source: 'BoS' }));
   out.actions.push(mk({ title: 'Raise purchase request for argon cylinders', due: D(1), priority: 'High', status: 'Open', source: 'Materials Lab in-charge' }));
@@ -2858,7 +2904,7 @@ const RS = {
   projects:        { label:'Projects & grants', date:r => r.start || r.submitted, end:r => r.end, title:r => r.title, status:r => r.status, detail:r => [r.agency, r.scheme, r.role, r.amount ? money(r.amount) : '', (r.progress ? r.progress + '% done' : '')].filter(Boolean).join(' · ') },
   responsibilities:{ label:'Responsibilities & in-charges', date:r => r.since, end:r => r.until, title:r => r.title, status:r => r.status, detail:r => { const p = r.paperwork || []; return [r.role, r.level, p.length ? p.filter(x => x.done).length + '/' + p.length + ' paperwork done' : ''].filter(Boolean).join(' · '); } },
   committees:      { label:'Committees', date:() => '', title:r => r.name, status:r => r.status, detail:r => [r.role, r.level, r.frequency].filter(Boolean).join(' · ') },
-  meetings:        { label:'Committee meetings', date:r => r.date, title:r => ((WD.byId(state.data, 'committees', r.committeeId) || {}).name || 'Meeting') + (r.title ? ' — ' + r.title : ''), status:r => r.status, detail:r => r.minutes || r.agenda },
+  meetings:        { label:'Meetings', date:r => r.date, title:r => WD.meetingTitle(state.data, r), status:r => r.status, detail:r => [r.with, r.minutes || r.agenda].filter(Boolean).join(' · ') },
   actions:         { label:'Action items', date:r => r.due, title:r => r.title, status:r => r.status, detail:r => [r.priority && r.priority + ' priority', r.source].filter(Boolean).join(' · ') },
   reminders:       { label:'Reminders', date:r => r.date, title:r => r.title, status:r => r.done ? 'Done' : (r.repeat || 'None'), detail:r => r.category },
   schedule:        { label:'Academic schedule', date:r => r.date, title:r => r.title, status:r => r.category, detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
@@ -3057,6 +3103,160 @@ function downloadReportXlsx(){
   if(!wb.SheetNames.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Note: 'No entries' }]), 'Report');
   XLSX.writeFile(wb, repFile(d, 'xlsx'));
 }
+
+/* ============================ NOTEPAD ============================
+   Jot first, sort later. A note keeps the text exactly as typed. "File
+   into…" opens the chosen section's form already filled in (first line
+   as the title, the full text in the notes, plus any date or time found
+   in the text). Once saved there, the note is marked as filed with a link
+   to the record it became.                                              */
+const NOTE_TARGETS = [
+  ['actions', 'Action item'], ['reminders', 'Reminder'], ['meetings', 'Meeting'], ['diary', 'Work diary entry'],
+  ['extraClasses', 'Extra class'], ['examDuties', 'Exam duty'], ['evaluations', 'Evaluation'], ['mentorMeetings', 'Mentoring meeting'],
+  ['publications', 'Publication'], ['conferences', 'Conference / workshop'], ['reviews', 'Peer review'], ['plans', 'Research plan'],
+  ['collaborations', 'Collaboration'], ['contacts', 'Researcher contact'], ['projects', 'Project / grant'], ['responsibilities', 'Responsibility'],
+  ['schedule', 'Academic schedule entry']
+];
+// where the first line and the full text go, and which date field to fill
+const NOTE_MAP = {
+  actions:{ t:'title', n:'notes', d:'due' }, reminders:{ t:'title', n:'notes', d:'date', tm:'time' }, meetings:{ t:'title', n:'agenda', d:'date', tm:'time' },
+  diary:{ t:'topic', n:'remarks', d:'date' }, extraClasses:{ t:'reason', d:'date', tm:'start' }, examDuties:{ t:'exam', n:'notes', d:'date', tm:'start' },
+  evaluations:{ t:'paper', n:'notes', d:'due' }, mentorMeetings:{ t:'agenda', n:'notes', d:'date', tm:'time' }, publications:{ t:'title', n:'notes' },
+  conferences:{ t:'title', n:'notes', d:'start' }, reviews:{ t:'journal', n:'notes', d:'due' }, plans:{ t:'title', n:'notes', d:'target' },
+  collaborations:{ t:'name', n:'outcomes', d:'since' }, contacts:{ t:'name', n:'notes' }, projects:{ t:'title', n:'notes' },
+  responsibilities:{ t:'title', n:'notes', d:'since' }, schedule:{ t:'title', n:'notes', d:'date' }
+};
+const NOTE_HINTS = [
+  [/\b(meeting|meet with|iqac|bos|board of studies|hod|dean|staff meeting)\b/i, 'meetings'],
+  [/\b(invigilat|squad|question paper|qp setting|exam duty|practical exam|viva)\b/i, 'examDuties'],
+  [/\b(evaluat|valuation|scripts|answer sheets|correction|records? to check)\b/i, 'evaluations'],
+  [/\b(mentee|mentoring|counsell?ing|parent)\b/i, 'mentorMeetings'],
+  [/\b(review (invitation|request)|reviewer|manuscript id)\b/i, 'reviews'],
+  [/\b(conference|workshop|fdp|seminar|webinar|symposium|abstract)\b/i, 'conferences'],
+  [/\b(paper|manuscript|journal|submit|revision|publish)\b/i, 'publications'],
+  [/\b(grant|proposal|funding|anrf|serb|dst|ugc|utili[sz]ation|uc\b)\b/i, 'projects'],
+  [/\b(extra class|remedial|make-?up class|substitution)\b/i, 'extraClasses'],
+  [/\b(taught|covered|class today|lecture on)\b/i, 'diary'],
+  [/\b(remind|renew|pay|call|email|send|follow up|follow-up|submit by)\b/i, 'reminders']
+];
+function suggestTarget(text){ for(const [re, c] of NOTE_HINTS) if(re.test(text)) return c; return 'actions'; }
+
+/* Finds a date / time written in plain words. Returns {date, time} (either may be ''). */
+function parseWhen(text){
+  const t = today(), s = ' ' + String(text).toLowerCase() + ' ';
+  const MON = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, sept:8, oct:9, nov:10, dec:11 };
+  const ymd = (y, m, d) => (m < 0 || m > 11 || d < 1 || d > 31) ? '' : `${y}-${WD.pad(m + 1)}-${WD.pad(d)}`;
+  const future = (m, d) => { let y = +t.slice(0, 4); let c = ymd(y, m, d); if(c && c < WD.addDays(t, -60)) c = ymd(y + 1, m, d); return c; };
+  let date = '', m;
+  if((m = s.match(/(\d{4})-(\d{2})-(\d{2})/))) date = `${m[1]}-${m[2]}-${m[3]}`;
+  else if(/\b(day after tomorrow)\b/.test(s)) date = WD.addDays(t, 2);
+  else if(/\btoday\b|\btonight\b/.test(s)) date = t;
+  else if(/\btomorrow\b|\btmrw\b|\btmr\b/.test(s)) date = WD.addDays(t, 1);
+  else if((m = s.match(/\bin (\d{1,2}) days?\b/))) date = WD.addDays(t, +m[1]);
+  else if((m = s.match(/\bnext week\b/))) date = WD.addDays(t, 7);
+  else if((m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?(?:\s*,?\s*(\d{4}))?/))) date = m[3] ? ymd(+m[3], MON[m[2]], +m[1]) : future(MON[m[2]], +m[1]);
+  else if((m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s*,?\s*(\d{4}))?/))) date = m[3] ? ymd(+m[3], MON[m[1]], +m[2]) : future(MON[m[1]], +m[2]);
+  else if((m = s.match(/\b(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\b/)) && +m[2] <= 12) date = m[3] ? ymd(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[2] - 1, +m[1]) : future(+m[2] - 1, +m[1]);
+  else if((m = s.match(/\b(?:(next|this|on|by)\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tue|tues|wed|thu|thur|thurs|fri|sat)\b/))){
+    const idx = ['sun','mon','tue','wed','thu','fri','sat'].indexOf(m[2].slice(0, 3));
+    let n = (idx - WD.dow(t) + 7) % 7; if(n === 0) n = 7; if(m[1] === 'next' && n < 7) n += 0;
+    date = WD.addDays(t, n);
+  }
+  let time = '';
+  if((m = s.match(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)/))){ let h = +m[1] % 12; if(/p/.test(m[3])) h += 12; time = WD.pad(h) + ':' + (m[2] || '00'); }
+  else if((m = s.match(/\b(?:at\s+)?([01]?\d|2[0-3]):([0-5]\d)\b/))) time = WD.pad(+m[1]) + ':' + m[2];
+  return { date: WD.validDate(date) ? date : '', time };
+}
+
+function notePreset(note, coll){
+  const map = NOTE_MAP[coll] || {}, text = note.text || '';
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const first = (lines[0] || '').slice(0, 160);
+  const p = { _fromNote: note.id };
+  if(map.t) p[map.t] = first;
+  if(map.n && (lines.length > 1 || text.length > 160)) p[map.n] = text;
+  else if(!map.t && map.n) p[map.n] = text;
+  const w = parseWhen(text);
+  if(map.d) p[map.d] = w.date || (['reminders','diary','meetings','mentorMeetings','examDuties','extraClasses','schedule'].includes(coll) ? today() : '');
+  if(map.tm && w.time) p[map.tm] = w.time;
+  if(coll === 'diary' && !p.courseId){ const c = state.data.courses.find(c => c.code && text.toUpperCase().includes(c.code.toUpperCase())); if(c) p.courseId = c.id; }
+  if(coll === 'extraClasses' || coll === 'evaluations'){ const c = state.data.courses.find(c => c.code && text.toUpperCase().includes(c.code.toUpperCase())); if(c){ if(coll === 'extraClasses') p.courseId = c.id; else p.paper = courseName(c.id); } }
+  if(coll === 'meetings' && /\b(iqac|bos|board of studies)\b/i.test(text)){ const cm = state.data.committees.find(c => text.toLowerCase().includes(String(c.name).toLowerCase().split(/[—-]/)[0].trim())); if(cm){ p.committeeId = cm.id; p.kind = 'Committee meeting'; } }
+  return p;
+}
+
+const addNote = guard(async (text) => {
+  text = (text || '').trim(); if(!text) return;
+  await store.upsert('notes', { text });
+  state.noteDraft = ''; LS.del('wd_note_draft');
+  toast('Note saved');
+});
+function fileNote(id, coll){
+  const n = WD.byId(state.data, 'notes', id); if(!n) return;
+  closeMenus(); editRecord(coll, null, notePreset(n, coll));
+}
+async function markNoteFiled(noteId, coll, recId){
+  const n = WD.byId(state.data, 'notes', noteId); if(!n) return;
+  await store.upsert('notes', Object.assign({}, n, { filedTo: { coll, id: recId }, filedOn: today() }));
+  toast(`Filed in ${SCHEMA[coll].label}`);
+}
+const unfileNote = guard(async id => { const n = WD.byId(state.data, 'notes', id); if(n){ const r = Object.assign({}, n); delete r.filedTo; delete r.filedOn; await store.upsert('notes', r); } });
+function toggleNoteMenu(id, btn){
+  const open = $('#noteMenu'); if(open){ const same = open.dataset.id === id; open.remove(); if(same) return; }
+  const n = WD.byId(state.data, 'notes', id); const sug = suggestTarget(n.text);
+  const w = parseWhen(n.text);
+  btn.parentNode.style.position = 'relative';
+  btn.insertAdjacentHTML('afterend', `<div class="menu note-menu" id="noteMenu" data-id="${id}">
+    <div class="mhead"><b>File into…</b><span>${w.date ? 'Date found: ' + fdate(w.date, 'dow') + (w.time ? ', ' + ftime(w.time) : '') : 'No date found in the note'}</span></div>
+    <button onclick="fileNote('${id}','${sug}')"><b>${esc(NOTE_TARGETS.find(x => x[0] === sug)[1])}</b>&nbsp;<span class="chip navy">Suggested</span></button><hr>
+    ${NOTE_TARGETS.filter(x => x[0] !== sug).map(([c, l]) => `<button onclick="fileNote('${id}','${c}')">${esc(l)}</button>`).join('')}</div>`);
+}
+document.addEventListener('click', e => { const m = $('#noteMenu'); if(m && !e.target.closest('.note-actions')) m.remove(); });
+function editNoteInline(id){
+  const el = $(`#note-${id} .note-text`); const n = WD.byId(state.data, 'notes', id); if(!el || !n) return;
+  el.outerHTML = `<div class="note-edit"><textarea class="inp" id="ne-${id}" rows="${Math.min(10, Math.max(3, n.text.split('\n').length + 1))}">${esc(n.text)}</textarea><div style="display:flex;gap:6px;margin-top:6px"><button class="btn sm" onclick="saveNoteEdit('${id}')">Save</button><button class="btn ghost sm" onclick="rerender()">Cancel</button></div></div>`;
+  const ta = $('#ne-' + id); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+const saveNoteEdit = guard(async id => { const n = WD.byId(state.data, 'notes', id); const v = $('#ne-' + id).value.trim(); if(!v) return; await store.upsert('notes', Object.assign({}, n, { text: v })); });
+const togglePin = guard(async id => { const n = WD.byId(state.data, 'notes', id); await store.upsert('notes', Object.assign({}, n, { pinned: !n.pinned })); });
+
+function noteTime(n){
+  const iso = n.createdAt || ''; if(!iso) return '';
+  const d = new Date(iso); const day = new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+  const tm = new Intl.DateTimeFormat('en-IN', { timeZone: TZ, hour:'numeric', minute:'2-digit' }).format(d).toLowerCase().replace(' ', '');
+  return (day === today() ? 'Today' : day === WD.addDays(today(), -1) ? 'Yesterday' : fdate(day, 'short')) + ', ' + tm;
+}
+function noteItem(n){
+  const f = n.filedTo, rec = f ? WD.byId(state.data, f.coll, f.id) : null;
+  const w = f ? null : parseWhen(n.text);
+  return `<div class="note ${f ? 'filed' : ''} ${n.pinned ? 'pinned' : ''}" id="note-${n.id}">
+    <div class="note-text">${nl2br(n.text)}</div>
+    <div class="note-foot"><span class="faint">${noteTime(n)}${w && w.date ? ` · <span class="note-when" title="Date found in the note">${fdate(w.date, 'short')}${w.time ? ' ' + ftime(w.time) : ''}</span>` : ''}</span>
+      ${f ? `<span class="note-filed">Filed in <button class="linkbtn" onclick="${rec ? `editRecord('${f.coll}','${f.id}')` : ''}">${esc(SCHEMA[f.coll] ? SCHEMA[f.coll].one : f.coll)}${rec ? '' : ' (deleted)'}</button></span>` : ''}
+      <span class="note-actions">${f ? `<button class="iconbtn" title="Move back to open notes" onclick="unfileNote('${n.id}')">↺</button>` : `<button class="btn ghost sm" onclick="toggleNoteMenu('${n.id}', this)">File into…</button><button class="iconbtn" title="${n.pinned ? 'Unpin' : 'Pin to top'}" onclick="togglePin('${n.id}')">${n.pinned ? '★' : '☆'}</button><button class="iconbtn" title="Edit" onclick="editNoteInline('${n.id}')">✎</button>`}<button class="iconbtn" title="Delete" onclick="confirmDelete('notes','${n.id}')">✕</button></span></div></div>`;
+}
+function sortedNotes(filed){
+  return state.data.notes.filter(n => !!n.filedTo === filed).sort((a, b) => ((b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) || ((b.createdAt || '') < (a.createdAt || '') ? -1 : 1));
+}
+function noteComposer(id){
+  const draft = state.noteDraft !== undefined ? state.noteDraft : (LS.get('wd_note_draft', '') || '');
+  return `<div class="note-compose"><textarea class="inp" id="${id}" rows="3" placeholder="Jot anything — “Meet HoD about lab budget on Friday 3pm”, “Renew ACS membership by 20 Nov”… (Ctrl+Enter to save)"
+    oninput="state.noteDraft=this.value;LS.set('wd_note_draft',this.value)" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();addNote(this.value)}">${esc(draft)}</textarea>
+    <div class="note-compose-bar"><span class="faint" style="font-size:12px">Later, use <b>File into…</b> to turn a note into an action, reminder, meeting, diary entry and more.</span><button class="btn sm" onclick="addNote($('#${id}').value)">Save note</button></div></div>`;
+}
+function notepadCard(){
+  const open = sortedNotes(false);
+  return `<div class="card notepad"><h3>Notepad ${open.length ? `<span class="chip">${open.length} to sort</span>` : ''}<span class="r"><button class="linkbtn" onclick="go('notes')">All notes →</button></span></h3>
+    ${noteComposer('noteInput')}${open.length ? `<div class="note-list">${open.slice(0, 5).map(noteItem).join('')}</div>${open.length > 5 ? `<button class="linkbtn" style="margin-top:6px" onclick="go('notes')">${open.length - 5} more →</button>` : ''}` : ''}</div>`;
+}
+VIEWS.notes = () => {
+  const tb = tabs('notes', [['open', `To sort (${sortedNotes(false).length})`], ['filed', `Filed (${sortedNotes(true).length})`]]);
+  const list = sortedNotes(tb.cur === 'filed');
+  return pageHead('Notepad', 'Quick notes that you can later file into the right section') + `<div class="card" style="margin-bottom:14px">${noteComposer('noteInputPage')}</div>` + tb.html +
+    (list.length ? `<div class="note-grid">${list.map(noteItem).join('')}</div>` : `<div class="card empty">${tb.cur === 'filed' ? 'Notes you file into a section appear here, with a link to where they went.' : '<b>Nothing to sort</b>Notes you jot down appear here until you file them.'}</div>`);
+};
+VIRTUAL.filed = (coll, r) => r.filedTo ? esc(SCHEMA[r.filedTo.coll] ? SCHEMA[r.filedTo.coll].one : '') : '<span class="faint">Not filed</span>';
+VIRTUAL.createdAt = (coll, r) => noteTime(r);
 
 
 /* ---------- update notice (same behaviour as the logbook) ---------- */
