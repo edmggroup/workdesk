@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-10-22-2">
-<meta name="app-version" content="1.4">
+<meta name="app-build" content="2026-11-02-1">
+<meta name="app-version" content="1.5">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -39,6 +39,8 @@
   --c-project:#166A4C; --c-project-w:#E4F4EC;
   --c-publication:#6E4A9E; --c-publication-w:#EFE7F5;
   --c-plan:#0E7C86; --c-plan-w:#E1F2F1;
+  --c-event:#C2410C; --c-event-w:#FDEDE4;
+  --c-funding:#0B7285; --c-funding-w:#E0F2F5;
   --holiday:#FDF3E7;
   --shadow-sm:0 1px 2px rgba(21,27,41,.05); --shadow-md:0 2px 6px rgba(21,27,41,.06),0 8px 24px rgba(21,27,41,.05);
   --radius:8px; color-scheme:light;
@@ -52,7 +54,7 @@
   --c-exam:#E9A05A; --c-exam-w:#352617; --c-evaluation:#E3B062; --c-evaluation-w:#33281A; --c-mentoring:#5BC6CE; --c-mentoring-w:#14302F;
   --c-meeting:#9AA3EA; --c-meeting-w:#232742; --c-action:#EF8A84; --c-action-w:#3A1F1E; --c-reminder:#C0A1E8; --c-reminder-w:#2D2340;
   --c-review:#6CC7E3; --c-review-w:#162F38; --c-conference:#7FCB84; --c-conference-w:#1A2F1C; --c-project:#5CC497; --c-project-w:#163026;
-  --c-publication:#C0A1E8; --c-publication-w:#2D2340; --c-plan:#5BC6CE; --c-plan-w:#14302F; --holiday:#2E2618;
+  --c-publication:#C0A1E8; --c-publication-w:#2D2340; --c-plan:#5BC6CE; --c-plan-w:#14302F; --c-event:#F59E6B; --c-event-w:#38231A; --c-funding:#5CC4D6; --c-funding-w:#142F35; --holiday:#2E2618;
   --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 4px 18px rgba(0,0,0,.35); color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -64,7 +66,7 @@
   --c-exam:#E9A05A; --c-exam-w:#352617; --c-evaluation:#E3B062; --c-evaluation-w:#33281A; --c-mentoring:#5BC6CE; --c-mentoring-w:#14302F;
   --c-meeting:#9AA3EA; --c-meeting-w:#232742; --c-action:#EF8A84; --c-action-w:#3A1F1E; --c-reminder:#C0A1E8; --c-reminder-w:#2D2340;
   --c-review:#6CC7E3; --c-review-w:#162F38; --c-conference:#7FCB84; --c-conference-w:#1A2F1C; --c-project:#5CC497; --c-project-w:#163026;
-  --c-publication:#C0A1E8; --c-publication-w:#2D2340; --c-plan:#5BC6CE; --c-plan-w:#14302F; --holiday:#2E2618;
+  --c-publication:#C0A1E8; --c-publication-w:#2D2340; --c-plan:#5BC6CE; --c-plan-w:#14302F; --c-event:#F59E6B; --c-event-w:#38231A; --c-funding:#5CC4D6; --c-funding-w:#142F35; --holiday:#2E2618;
   --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 4px 18px rgba(0,0,0,.35); color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -439,6 +441,48 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .note-actions{margin-left:auto;display:flex;gap:2px;align-items:center;position:relative}
 .note-menu{right:0;left:auto;top:calc(100% + 4px);max-height:360px;overflow:auto;min-width:240px}
 
+/* ---------- projects, funding calls, events ---------- */
+.pcard{cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:box-shadow .12s}
+.pcard:hover{box-shadow:var(--shadow-md)}
+.pc-top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.pc-title{font-size:14.5px;font-weight:650;line-height:1.35}
+.pc-sub{font-size:12.5px}
+.pc-kv{display:grid;grid-template-columns:110px minmax(0,1fr);gap:3px 10px;font-size:13px;margin:8px 0 0}
+.pc-kv dt{color:var(--ink-faint);font-weight:600}.pc-kv dd{margin:0;min-width:0;word-break:break-word}
+.pc-note{font-size:13px;color:var(--ink-soft);background:var(--surface-2);border-radius:7px;padding:8px 10px;margin-top:8px;line-height:1.45}
+.pc-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:10px}
+.pc-actions:empty{display:none}
+.pc-count{font-size:13px;margin-top:6px;color:var(--ink-soft)}.pc-count b{font-size:20px;color:var(--ink);margin-right:3px}
+.pc-count.warn b{color:var(--warn)}.pc-count.bad b{color:var(--bad)}
+.steps{list-style:none;margin:8px 0 0;padding:0 0 0 12px;border-left:2px solid var(--border);display:flex;flex-direction:column;gap:3px}
+.steps li{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;position:relative}
+.steps li:before{content:"";position:absolute;left:-17px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--surface);border:2px solid var(--border-strong)}
+.steps li.past{color:var(--ink-faint)}.steps li.past:before{background:var(--border-strong)}
+.steps li.key b{color:var(--bad)}.steps li.key:before{border-color:var(--bad)}
+.steps li.key.past b{color:var(--ink-faint)}
+.steps span{color:var(--ink-soft)}.steps b{font-weight:600;white-space:nowrap}
+.proj-pipe{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:6px}
+.proj-pipe button{border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:8px 6px;text-align:center}
+.proj-pipe b{display:block;font-size:20px;color:var(--c-project)}.proj-pipe span{font-size:11.5px;color:var(--ink-soft)}
+.pp-row{display:grid;grid-template-columns:minmax(0,1fr) 130px minmax(0,1fr) minmax(0,1fr) 30px;gap:6px;align-items:center}
+@media (max-width:700px){.pp-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 30px}.pp-row .inp:nth-child(3),.pp-row .inp:nth-child(4){grid-column:span 1}}
+.ev-cats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.evc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-strong);background:var(--surface);border-radius:16px;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.evc i{width:8px;height:8px;border-radius:50%;background:var(--ec,var(--navy))}
+.evc b{font-weight:700;color:var(--ink)}
+.evc.on{background:var(--navy-wash);border-color:var(--navy);color:var(--ink)}
+.ev-list{padding:6px 18px 14px}
+.ev-row{display:flex;gap:14px;padding:11px 0;border-top:1px solid var(--border);cursor:pointer;align-items:flex-start}
+.ev-row:hover .ev-title{text-decoration:underline}
+.ev-row.past{opacity:.75}.ev-row.off .ev-title{text-decoration:line-through}
+.ev-date{width:54px;flex-shrink:0;text-align:center;border:1px solid var(--border);border-radius:8px;padding:4px 2px;background:var(--surface-2)}
+.ev-date b{display:block;font-size:19px;line-height:1.1}.ev-date span{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--ink-soft)}
+.ev-date em{display:block;font-style:normal;font-size:10.5px;color:var(--ink-faint)}
+.ev-body{flex:1;min-width:0}.ev-title{font-weight:600;font-size:14.5px;margin:1px 0 2px}
+.ev-row .rt{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+
+.pcard .linkbtn{text-align:left}
+
 </style>
 </head>
 <body>
@@ -504,7 +548,7 @@ var WD = (function () {
     'plans', 'publications', 'collaborations', 'conferences', 'reviews', 'contacts', 'metrics',
     'projects',
     'responsibilities', 'committees', 'meetings', 'actions', 'reminders',
-    'notes'
+    'notes', 'events', 'fundingCalls'
   ];
 
   /* Reminder categories: label, default lead time (days before), default on. */
@@ -522,7 +566,9 @@ var WD = (function () {
     conference:  { label: 'Conference / workshop dates & deadlines', lead: 7, on: true },
     project:     { label: 'Project milestones & reports',  lead: 14, on: true },
     publication: { label: 'Publication revisions & follow-ups', lead: 5, on: true },
-    plan:        { label: 'Research plan milestones',      lead: 7,  on: true }
+    plan:        { label: 'Research plan milestones',      lead: 7,  on: true },
+    event:       { label: 'Events (FDPs, institutional, in-charge, research, teaching…)', lead: 7, on: true },
+    funding:     { label: 'Funding calls — opening, last date, planned submission', lead: 14, on: true }
   };
 
   var DEFAULT_SETTINGS = {
@@ -808,11 +854,12 @@ var WD = (function () {
     });
     // action items
     list(data, 'actions').forEach(function (a) {
-      if (a.status === 'Done') return;
-      push('action', a.due, '', a.title, (a.priority ? a.priority + ' priority' : '') + (a.source ? ' · ' + a.source : ''), { coll: 'actions', id: a.id }, true);
+      if (a.status === 'Done' || a.archived) return;
+      push('action', a.due, a.time || '', a.title, (a.priority ? a.priority + ' priority' : '') + (a.source ? ' · ' + a.source : ''), { coll: 'actions', id: a.id }, true);
     });
     // reminders
     list(data, 'reminders').forEach(function (r) {
+      if (r.archived) return;
       if (r.done && (r.repeat || 'None') === 'None') return;
       if (!on('reminder')) return;
       var rep = r.repeat || 'None', open = rep === 'None';
@@ -856,10 +903,39 @@ var WD = (function () {
       (r.paperwork || []).forEach(function (m, i) { if (!m.done) push('action', m.due, '', m.text, 'Paperwork · ' + (r.title || ''), { coll: 'responsibilities', id: r.id, sub: i }, true); });
     });
     list(data, 'projects').forEach(function (p) {
-      if (['Completed', 'Rejected', 'Closed'].indexOf(p.status) !== -1) return;
+      if (['Completed', 'Rejected', 'Closed', 'Not submitted'].indexOf(p.status) !== -1) return;
+      var toApply = ['Idea', 'Concept note', 'Drafting', 'Drafting proposal'].indexOf(p.status) !== -1;
+      var applied = ['Submitted', 'Under review', 'Shortlisted / presentation'].indexOf(p.status) !== -1;
+      if (toApply) {
+        push('project', p.targetSubmit, '', 'Planned proposal submission: ' + (p.title || ''), [p.agency, p.scheme].filter(Boolean).join(' · '), { coll: 'projects', id: p.id }, true);
+        return;
+      }
+      if (applied) { push('project', p.resultExpected, '', 'Result expected: ' + (p.title || ''), p.agency || '', { coll: 'projects', id: p.id }, false); return; }
       (p.milestones || []).forEach(function (m, i) { if (!m.done) push('project', m.due, '', m.text, 'Project: ' + (p.title || ''), { coll: 'projects', id: p.id, sub: i }, true); });
       push('project', p.nextReportDue, '', 'Report / UC due: ' + (p.title || ''), p.agency || '', { coll: 'projects', id: p.id }, true);
       push('project', p.end, '', 'Project ends: ' + (p.title || ''), p.agency || '', { coll: 'projects', id: p.id }, false);
+    });
+
+    // funding calls
+    list(data, 'fundingCalls').forEach(function (f) {
+      var live = ['Watching', 'Preparing'].indexOf(f.status || 'Watching') !== -1;
+      var name = (f.agency ? f.agency + ' — ' : '') + (f.title || 'Funding call');
+      if (live) {
+        push('funding', f.opens, '', 'Applications open: ' + name, f.lastDate ? 'Last date ' + short(f.lastDate) : '', { coll: 'fundingCalls', id: f.id }, false);
+        push('funding', f.targetSubmit, '', 'Planned submission: ' + name, f.lastDate ? 'Last date ' + short(f.lastDate) : '', { coll: 'fundingCalls', id: f.id }, true);
+        push('funding', f.hardCopy, '', 'Hard copy / endorsement due: ' + name, '', { coll: 'fundingCalls', id: f.id }, true);
+        push('funding', f.lastDate, '', 'Last date: ' + name, f.status === 'Preparing' ? 'Proposal in preparation' : 'Not started yet', { coll: 'fundingCalls', id: f.id }, true);
+      } else if (f.status === 'Submitted' || f.status === 'Result awaited') {
+        push('funding', f.resultDate, '', 'Result expected: ' + name, '', { coll: 'fundingCalls', id: f.id }, false);
+      }
+    });
+    // events
+    list(data, 'events').forEach(function (e) {
+      if (['Cancelled', 'Not attending'].indexOf(e.status) !== -1) return;
+      var multi = e.end && e.end !== e.start ? ' (till ' + short(e.end) + ')' : '';
+      if (e.status !== 'Completed' || ignoreLead) push('event', e.start, e.time, e.title, [e.category, e.role, e.venue].filter(Boolean).join(' · ') + multi, { coll: 'events', id: e.id }, false);
+      if (e.status === 'Planned') push('event', e.regDeadline, '', 'Registration deadline: ' + e.title, e.organiser || '', { coll: 'events', id: e.id }, true);
+      (e.tasks || []).forEach(function (m, i) { if (!m.done) push('event', m.due, '', m.text, 'Event: ' + e.title, { coll: 'events', id: e.id, sub: i }, true); });
     });
 
     items.sort(function (a, b) {
@@ -929,6 +1005,15 @@ const DAY_OPTIONS = () => state.settings.timetable.mode === 'dayorder'
   ? Array.from({length: +state.settings.timetable.dayOrders || 6}, (_, i) => 'D' + (i + 1))
   : ['Mon','Tue','Wed','Thu','Fri','Sat'];
 
+const PROJECT_STATUSES = ['Idea','Concept note','Drafting','Drafting proposal','Submitted','Under review','Shortlisted / presentation','Sanctioned','Ongoing','Completed','Rejected','Not submitted','Closed'];
+const PROJECT_GROUPS = {
+  toApply:   { label:'Going to apply', statuses:['Idea','Concept note','Drafting','Drafting proposal'] },
+  applied:   { label:'Applied', statuses:['Submitted','Under review','Shortlisted / presentation'] },
+  sanctioned:{ label:'Sanctioned', statuses:['Sanctioned','Ongoing','Completed'] },
+  closed:    { label:'Not funded / dropped', statuses:['Rejected','Not submitted','Closed'] }
+};
+function projectGroup(p){ for(const k in PROJECT_GROUPS) if(PROJECT_GROUPS[k].statuses.includes(p.status)) return k; return 'toApply'; }
+const EVENT_CATS = ['FDP / training programme','Institutional event','Event I am in-charge of','Research event','External conference / workshop','Teaching-related event','Other academic activity'];
 const SCHEMA = {
   notes: { label:'Notes', one:'note',
     fields:[ {k:'text', label:'Note', type:'textarea', req:true, full:true, rows:5} ],
@@ -1194,23 +1279,76 @@ const SCHEMA = {
   projects: { label:'Projects & grants', one:'project / grant',
     fields:[
       {k:'title', label:'Project title', type:'text', req:true, full:true},
-      {k:'agency', label:'Funding agency', type:'text', ph:'ANRF / SERB, DST, UGC, Christ University (seed)…'},
-      {k:'scheme', label:'Scheme', type:'text'},
-      {k:'role', label:'Your role', type:'select', opts:['PI','Co-PI','Mentor','Consultant'], def:'PI'},
-      {k:'amount', label:'Amount (₹)', type:'number'},
-      {k:'status', label:'Status', type:'select', opts:['Idea','Drafting','Submitted','Sanctioned','Ongoing','Completed','Rejected','Closed'], def:'Drafting'},
+      {k:'status', label:'Stage', type:'select', opts:PROJECT_STATUSES, def:'Concept note', help:'Going to apply: Idea → Concept note → Drafting proposal. Applied: Submitted → Under review → Shortlisted. Sanctioned: Sanctioned → Ongoing → Completed.'},
+      {k:'callId', label:'Funding call', type:'ref', ref:'fundingCalls', help:'Link the call you are applying to — its deadlines appear on the project.'},
+      {k:'agency', label:'Funding agency', type:'text', ph:'ANRF, DST, DBT, UGC, CSIR, Christ University (seed)…'},
+      {k:'scheme', label:'Scheme', type:'text', ph:'Core Research Grant, ARG, SURE, TDP…'},
+      {k:'role', label:'Your role', type:'select', opts:['PI','Co-PI','Mentor','Consultant','Collaborator'], def:'PI'},
+      {k:'pi', label:'Principal Investigator (PI)', type:'text', ph:'Name, institution'},
+      {k:'team', label:'Co-PIs & collaborators', type:'people', full:true},
+      {k:'area', label:'Research area / keywords', type:'text', full:true},
+      {k:'conceptNote', label:'Concept note (summary)', type:'textarea', full:true, rows:4, ph:'Problem, novelty, objectives, expected outcome — the 1-page idea.'},
+      {k:'objectives', label:'Objectives & deliverables', type:'textarea', full:true, rows:3},
+      {k:'conceptLink', label:'Concept note document', type:'url', ph:'Drive / OneDrive link'},
+      {k:'proposalLink', label:'Full proposal document', type:'url', ph:'Drive / OneDrive link'},
+      {k:'amountRequested', label:'Budget requested (₹)', type:'number'},
+      {k:'amount', label:'Amount sanctioned (₹)', type:'number'},
+      {k:'durationMonths', label:'Duration (months)', type:'number', min:1},
+      {k:'refNo', label:'Proposal / file / sanction order no.', type:'text'},
+      {k:'targetSubmit', label:'Planned submission date', type:'date', help:'Your own target, ahead of the call’s last date. Reminded.'},
       {k:'submitted', label:'Submitted on', type:'date'},
+      {k:'resultExpected', label:'Result expected by', type:'date'},
       {k:'sanctioned', label:'Sanctioned on', type:'date'},
+      {k:'sanctionLink', label:'Sanction order document', type:'url'},
       {k:'start', label:'Start', type:'date'},
       {k:'end', label:'End', type:'date'},
       {k:'nextReportDue', label:'Next progress report / UC due', type:'date'},
       {k:'progress', label:'Progress (%)', type:'number', min:0, max:100},
       {k:'milestones', label:'Milestones / deliverables', type:'checklist', full:true},
       {k:'log', label:'Progress log', type:'log', full:true},
-      {k:'notes', label:'Notes', type:'textarea', full:true}
-,
+      {k:'notes', label:'Notes', type:'textarea', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
-    ], cols:['title','agency','role','amount','start','end','progress','status'], sort:['start','desc'] },
+    ], cols:['title','agency','role','pi','projectMoney','keyDate','progress','status'], sort:['start','desc'] },
+
+  fundingCalls: { label:'Funding calls', one:'funding call',
+    fields:[
+      {k:'title', label:'Call / scheme', type:'text', req:true, full:true, ph:'ANRF Core Research Grant 2027'},
+      {k:'agency', label:'Funding agency', type:'text', ph:'ANRF, DST, DBT, CSIR, ICMR, UGC, industry…'},
+      {k:'area', label:'Thematic area', type:'text', ph:'Energy storage, interdisciplinary…'},
+      {k:'status', label:'Status', type:'select', opts:['Watching','Preparing','Submitted','Result awaited','Awarded','Not selected','Missed','Not applying'], def:'Watching'},
+      {k:'announced', label:'Call announced on', type:'date'},
+      {k:'opens', label:'Application opens', type:'date'},
+      {k:'lastDate', label:'Last date for submission', type:'date', help:'Reminded ahead of time (Settings → Reminders → Funding calls).'},
+      {k:'hardCopy', label:'Hard copy / institutional endorsement by', type:'date'},
+      {k:'targetSubmit', label:'My planned submission date', type:'date'},
+      {k:'submittedOn', label:'Proposal submitted on', type:'date'},
+      {k:'resultDate', label:'Result expected', type:'date'},
+      {k:'amount', label:'Funding up to (₹)', type:'number'},
+      {k:'duration', label:'Duration', type:'text', ph:'3 years'},
+      {k:'eligibility', label:'Eligibility', type:'textarea', full:true, rows:2},
+      {k:'link', label:'Call notice / portal', type:'url', full:true},
+      {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['title','agency','callStage','opens','lastDate','targetSubmit','status'], sort:['lastDate','asc'] },
+
+  events: { label:'Events', one:'event',
+    fields:[
+      {k:'title', label:'Event', type:'text', req:true, full:true},
+      {k:'category', label:'Category', type:'select', opts:EVENT_CATS, def:'Institutional event'},
+      {k:'role', label:'My role', type:'select', opts:['Participant','In-charge / coordinator','Organiser / convener','Resource person','Speaker / presenter','Judge / jury','Committee member','Volunteer / support','Attending as delegate'], def:'Participant'},
+      {k:'start', label:'From', type:'date', req:true},
+      {k:'end', label:'To', type:'date'},
+      {k:'time', label:'Time', type:'time'},
+      {k:'organiser', label:'Organised by', type:'text', ph:'Department, IQAC, Centre for Research, external body…'},
+      {k:'venue', label:'Venue / link', type:'text'},
+      {k:'mode', label:'Mode', type:'select', opts:['Offline','Online','Hybrid'], def:'Offline'},
+      {k:'regDeadline', label:'Registration / nomination deadline', type:'date'},
+      {k:'status', label:'Status', type:'select', opts:['Planned','Registered','Confirmed','Completed','Cancelled','Not attending'], def:'Planned'},
+      {k:'tasks', label:'My tasks for this event', type:'checklist', full:true, addLabel:'+ Add task'},
+      {k:'outcome', label:'Outcome / report / certificate details', type:'textarea', full:true},
+      {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['start','title','category','role','venue','status'], sort:['start','asc'] },
 
   responsibilities: { label:'Responsibilities & in-charges', one:'responsibility',
     fields:[
@@ -1259,14 +1397,17 @@ const SCHEMA = {
   actions: { label:'Action items', one:'action item',
     fields:[
       {k:'title', label:'Action', type:'text', req:true, full:true},
-      {k:'due', label:'Due', type:'date'},
+      {k:'due', label:'Due date', type:'date', req:true},
+      {k:'time', label:'Time', type:'time'},
       {k:'priority', label:'Priority', type:'select', opts:['High','Medium','Low'], def:'Medium'},
       {k:'status', label:'Status', type:'select', opts:['Open','In progress','Done'], def:'Open'},
+      {k:'category', label:'Category', type:'select', opts:['','Teaching','Exams','Research','Projects','Administration','Events','Personal']},
+      {k:'doneOn', label:'Completed on', type:'date', help:'Filled in automatically when marked done.'},
       {k:'source', label:'Arising from', type:'text', ph:'IQAC meeting 12 Sep, Lab in-charge…'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
 ,
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
-    ], cols:['due','title','priority','source','docs','status'], sort:['due','asc'] },
+    ], cols:['due','title','priority','category','source','docs','status','rowActs'], sort:['due','asc'] },
 
   reminders: { label:'Reminders', one:'reminder',
     fields:[
@@ -1275,18 +1416,18 @@ const SCHEMA = {
       {k:'time', label:'At', type:'time'},
       {k:'repeat', label:'Repeat', type:'select', opts:['None','Daily','Weekly','Monthly','Yearly'], def:'None'},
       {k:'lead', label:'Start reminding (days before)', type:'number', min:0, help:'Leave blank to use the default from Settings.'},
-      {k:'category', label:'Category', type:'select', opts:['','Teaching','Exams','Research','Projects','Administration','Personal']},
+      {k:'category', label:'Category', type:'select', opts:['','Teaching','Exams','Research','Projects','Administration','Events','Personal']},
       {k:'notes', label:'Notes', type:'textarea', full:true}
 ,
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
-    ], cols:['next','title','repeat','category','done'], sort:['date','asc'] }
+    ], cols:['next','title','repeat','category','remState','done','rowActs'], sort:['date','asc'] }
 };
 
 /* ============================ CONFIG ============================
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -1341,12 +1482,13 @@ function relDay(s){
 }
 function money(n){ if(n === '' || n == null || isNaN(+n)) return ''; return '₹' + (+n).toLocaleString('en-IN'); }
 function toast(msg, bad){
+  $$('.toast').forEach(x => x.remove());
   const t = document.createElement('div'); t.className = 'toast' + (bad ? ' bad' : ''); t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), bad ? 5000 : 2600);
 }
 function chip(status){ if(!status) return ''; return `<span class="chip ${STATUS_TONE[status] || ''}">${esc(status)}</span>`; }
 function catDot(c){ return `<span class="cat" style="color:var(--c-${c})"><i style="background:var(--c-${c})"></i>${esc(CAT_SHORT[c] || c)}</span>`; }
-const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan' };
+const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call' };
 function bar(pct, tone){ pct = Math.max(0, Math.min(100, pct || 0)); return `<div class="bar ${tone || ''}"><i style="width:${pct}%"></i></div>`; }
 async function sha(s){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -1678,16 +1820,16 @@ async function showInstallHelp(){
 }
 /* ============================ SHELL ============================ */
 const NAV = [
-  ['dashboard','Dashboard'], ['notes','Notepad'], ['calendar','Calendar'], ['agenda','Reminders & alerts'], ['academic','Academic calendar'],
+  ['dashboard','Dashboard'], ['notes','Notepad'], ['calendar','Calendar'], ['events','Events'], ['agenda','Reminders & alerts'], ['academic','Academic calendar'],
   { g:'Teaching', items:[['timetable','Timetable'],['diary','Work diary'],['courses','Courses & syllabus']] },
   { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations']] },
   { g:'Mentoring', items:[['mentees','Mentees'],['mentorMeetings','Mentoring meetings']] },
   { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
-  ['projects','Projects & grants'],
+  { g:'Projects & funding', items:[['projects','Projects & grants'],['fundingCalls','Funding calls']] },
   { g:'Administration', items:[['responsibilities','Responsibilities'],['meetings','Meetings'],['committees','Committees'],['actions','Action items'],['reminders','Reminders']] },
   ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', notes:'reminder', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
 const NAV_ICON = {
   dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
   calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
@@ -1697,6 +1839,8 @@ const NAV_ICON = {
   Examinations:'<path d="M6 2h6l4 4v12H6zM12 2v4h4M8 11h6M8 14h4"/>',
   Mentoring:'<circle cx="7" cy="7" r="3"/><circle cx="14" cy="8" r="2.4"/><path d="M2 17c0-3 2.2-5 5-5s5 2 5 5M12 17c0-2 1-3.6 3-3.6s3 1.6 3 3.6"/>',
   Research:'<path d="M8 2v6L3 16a1 1 0 001 1.5h12A1 1 0 0017 16l-5-8V2M7 2h6M5.5 12h9"/>',
+  events:'<path d="M3 5h14v12H3zM3 9h14M7 3v4M13 3v4M7 12h2v2H7z"/>',
+  'Projects & funding':'<path d="M3 6h14v11H3zM7 6V4h6v2M3 11h14"/>',
   projects:'<path d="M3 6h14v11H3zM7 6V4h6v2M3 11h14"/>',
   Administration:'<path d="M4 3h12v14H4zM7 7h6M7 10h6M7 13h4"/>',
   notes:'<path d="M5 3h10v14H5zM8 7h4M8 10h4M8 13h2"/>',
@@ -1844,6 +1988,11 @@ function fieldHtml(coll, f, rec){
       input = `<div class="ck-list" id="ck_${f.k}">${items.map(ckRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#ck_${f.k}').insertAdjacentHTML('beforeend', ckRow({}))">${esc(f.addLabel || '+ Add milestone')}</button>`;
       break;
     }
+    case 'people': {
+      const items = Array.isArray(v) ? v : [];
+      input = `<div class="ck-list" id="pp_${f.k}">${items.map(personRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#pp_${f.k}').insertAdjacentHTML('beforeend', personRow({}))">+ Add person</button>`;
+      break;
+    }
     case 'links': {
       const items = Array.isArray(v) ? v : [];
       input = `<div class="ck-list" id="lk_${f.k}">${items.map(linkRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#lk_${f.k}').insertAdjacentHTML('beforeend', linkRow({}))">+ Add link</button><div class="help">Paste a share link from Google Drive, OneDrive / SharePoint, Dropbox or any website. Set sharing on the file itself.</div>`;
@@ -1862,6 +2011,8 @@ function fieldHtml(coll, f, rec){
   return `<div class="${f.full || f.type === 'textarea' || f.type === 'multiref' ? 'full' : ''}" data-f="${f.k}">${lab}${input}${help}</div>`;
 }
 function ckRow(m){ return `<div class="ck-row"><input type="checkbox" ${m.done ? 'checked' : ''}><input class="inp" placeholder="Milestone" value="${esc(m.text || '')}"><input class="inp" type="date" value="${esc(m.due || '')}" title="Due"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
+const PERSON_ROLES = ['Co-PI','Collaborator','Mentor','Industry partner','Consultant','JRF / project staff','Other'];
+function personRow(m){ return `<div class="pp-row"><input class="inp" placeholder="Name" value="${esc(m.name || '')}"><select class="inp">${PERSON_ROLES.map(r => `<option ${r === (m.role || 'Co-PI') ? 'selected' : ''}>${r}</option>`).join('')}</select><input class="inp" placeholder="Institution / department" value="${esc(m.institution || '')}"><input class="inp" type="email" placeholder="Email" value="${esc(m.email || '')}"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
 function linkKind(u){ u = String(u || '').toLowerCase(); if(/drive\.google|docs\.google|sheets\.google|slides\.google/.test(u)) return 'Drive'; if(/onedrive|1drv\.ms|sharepoint|office\.com|live\.com/.test(u)) return 'OneDrive'; if(/dropbox/.test(u)) return 'Dropbox'; return 'Link'; }
 function linkRow(m){ return `<div class="lk-row"><input class="inp" placeholder="Label (e.g. Stock register 2026)" value="${esc(m.label || '')}"><input class="inp" type="url" placeholder="https://drive.google.com/…" value="${esc(m.url || '')}"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
 function linksHtml(v, max){
@@ -1875,6 +2026,7 @@ function readForm(coll, form, base){
   SCHEMA[coll].fields.forEach(f => {
     if(f.type === 'multiref') rec[f.k] = $$(`input[name="${f.k}"]:checked`, form).map(i => i.value);
     else if(f.type === 'checklist') rec[f.k] = $$(`#ck_${f.k} .ck-row`, form).map(r => { const i = $$('input', r); return { done: i[0].checked, text: i[1].value.trim(), due: i[2].value }; }).filter(m => m.text);
+    else if(f.type === 'people') rec[f.k] = $$(`#pp_${f.k} .pp-row`, form).map(r => { const i = $$('input,select', r); return { name: i[0].value.trim(), role: i[1].value, institution: i[2].value.trim(), email: i[3].value.trim() }; }).filter(m => m.name);
     else if(f.type === 'links') rec[f.k] = $$(`#lk_${f.k} .lk-row`, form).map(r => { const i = $$('input', r); let u = i[1].value.trim(); if(u && !/^https?:\/\//i.test(u)) u = 'https://' + u; return { label: i[0].value.trim(), url: u }; }).filter(m => m.url);
     else if(f.type === 'log') rec[f.k] = $$(`#lg_${f.k} .log-row`, form).map(r => { const i = $$('input', r); return { date: i[0].value, note: i[1].value.trim() }; }).filter(m => m.note).sort((a, b) => a.date < b.date ? 1 : -1);
     else { const el = form.elements[f.k]; if(el) rec[f.k] = el.value.trim ? el.value.trim() : el.value; }
@@ -1887,7 +2039,7 @@ function validate(coll, rec){
     const v = rec[f.k];
     if(f.req && (v === '' || v == null || (Array.isArray(v) && !v.length))) return `“${f.label}” is required.`;
   }
-  const pairs = [['start','end'],['date','endDate'],['since','until'],['received','due']];
+  const pairs = [['start','end'],['date','endDate'],['since','until'],['received','due'],['announced','opens'],['opens','lastDate'],['submitted','resultExpected'],['regDeadline','end']];
   for(const [a, b] of pairs){
     const fa = SCHEMA[coll].fields.find(f => f.k === a), fb = SCHEMA[coll].fields.find(f => f.k === b);
     if(fa && fb && rec[a] && rec[b] && rec[b] < rec[a]) return `“${fb.label}” can’t be before “${fa.label}”.`;
@@ -1917,8 +2069,16 @@ const FORM_EXTRAS = {
   meetings: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('${esc(WD.meetingTitle(state.data, rec)).replace(/'/g, '&#39;')} — ${fdate(rec.date)}')">+ Action item from this meeting</button>` : '',
   mentorMeetings: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('Mentoring meeting — ${fdate(rec.date)}')">+ Action item</button>` : '',
   diary: rec => `<button type="button" class="btn ghost sm" onclick="copyLastTopic()">Continue from last class</button>`,
+  fundingCalls: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="projectFromCall('${rec.id}')">+ Start a proposal for this call</button>` : '',
+  projects: rec => rec.callId && WD.byId(state.data, 'fundingCalls', rec.callId) ? `<button type="button" class="btn ghost sm" onclick="closeModal();editRecord('fundingCalls','${rec.callId}')">Open funding call</button>` : '',
+  events: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('Event: ${esc(rec.title || '').replace(/'/g, '&#39;')}')">+ Action item</button>` : '',
   extraClasses: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="logSessionFromExtra('${rec.id}')">Log in diary</button>` : ''
 };
+function projectFromCall(id){
+  const f = WD.byId(state.data, 'fundingCalls', id); if(!f) return; closeModal();
+  if(['Watching'].includes(f.status || 'Watching')) store.upsert('fundingCalls', Object.assign({}, f, { status: 'Preparing' }));
+  editRecord('projects', null, { title: '', status: 'Concept note', callId: f.id, agency: f.agency || '', scheme: f.title || '', role: 'PI', pi: state.settings.profile.name || '', targetSubmit: f.targetSubmit || (WD.validDate(f.lastDate) ? WD.addDays(f.lastDate, -3) : '') });
+}
 function addActionFrom(src){ closeModal(); editRecord('actions', null, { source: src }); }
 
 function editRecord(coll, id, preset){
@@ -1953,6 +2113,9 @@ function editRecord(coll, id, preset){
   form.onsubmit = guard(async ev => {
     ev.preventDefault();
     const out = readForm(coll, form, modalState.base);
+    if(coll === 'actions'){ if(out.status === 'Done' && !out.doneOn) out.doneOn = today(); if(out.status !== 'Done') out.doneOn = ''; }
+    if(coll === 'reminders' && (out.repeat || 'None') === 'None' && existing && existing.date !== out.date && existing.done){ out.done = false; }
+    if(coll === 'events' && !out.end) out.end = out.start;
     if(coll === 'meetings' && out.committeeId && !out.kind) out.kind = 'Committee meeting';
     if(coll === 'diary'){
       if((out.hours === '' || out.hours == null) && out.start && out.end) out.hours = String(WD.hoursBetween(out.start, out.end));
@@ -1983,13 +2146,26 @@ const VIRTUAL = {
     return '';
   },
   paperworkProg: (coll, r) => { const a = r.paperwork || []; if(!a.length) return '<span class="faint">—</span>'; const d = a.filter(x => x.done).length, od = a.filter(x => !x.done && x.due && x.due < today()).length; return `<div style="min-width:90px">${bar(d / a.length * 100, od ? 'bad' : 'ok')}<div class="faint" style="font-size:11.5px;margin-top:3px">${d}/${a.length}${od ? ` · <span style="color:var(--bad)">${od} overdue</span>` : ''}</div></div>`; },
+  rowActs: (coll, r) => {
+    const btn = (l, fn, cls) => `<button class="btn ${cls || 'ghost'} sm" onclick="event.stopPropagation();${fn}">${l}</button>`;
+    if(r.archived) return btn('Restore', `setArchived('${coll}','${r.id}',false)`);
+    const doneNow = coll === 'actions' ? r.status === 'Done' : ((r.repeat || 'None') === 'None' && r.done);
+    const out = [];
+    if(coll === 'actions') out.push(doneNow ? btn('Reopen', `reopenItem('actions','${r.id}')`) : btn('Done', `quickDone('actions','${r.id}')`));
+    out.push(btn('Archive', `setArchived('${coll}','${r.id}',true)`));
+    return `<span style="display:inline-flex;gap:4px;white-space:nowrap">${out.join('')}</span>`;
+  },
+  remState: (coll, r) => { const b = itemBucket(coll, r); const h = (r.history || []).length; return chip({ pending:'Pending', overdue:'Overdue', completed:'Completed', archived:'Archived' }[b].replace('Pending', (r.repeat || 'None') !== 'None' ? 'Active' : 'Pending')) + (h ? `<div class="faint" style="font-size:11.5px;margin-top:3px">done ${h}× · last ${fdate(r.history[r.history.length - 1].on || r.history[r.history.length - 1].occurrence, 'short')}</div>` : ''); },
+  projectMoney: (coll, r) => r.amount ? money(r.amount) + '<div class="faint" style="font-size:11.5px">sanctioned</div>' : r.amountRequested ? money(r.amountRequested) + '<div class="faint" style="font-size:11.5px">requested</div>' : '<span class="faint">—</span>',
+  keyDate: (coll, r) => { const k = projectKeyDate(r); return k ? `<span style="white-space:nowrap${k.date < today() && k.open ? ';color:var(--bad)' : ''}">${fdate(k.date)}</span><div class="faint" style="font-size:11.5px">${esc(k.label)}</div>` : '<span class="faint">—</span>'; },
+  callStage: (coll, r) => { const k = callNextDate(r); return k ? `<span style="white-space:nowrap">${esc(k.label)}</span><div class="faint" style="font-size:11.5px">${relDay(k.date)}</div>` : '<span class="faint">—</span>'; },
   meetingName: (coll, r) => `<b style="font-weight:600">${esc(WD.meetingTitle(state.data, r))}</b>${r.with ? `<div class="faint" style="font-size:12px">${esc(r.with)}</div>` : ''}`,
   lastMet: (coll, r) => { const d = lastMetDate(r.id); if(!d) return '<span class="chip warn">Not met yet</span>'; const n = WD.diffDays(d, today()); return `${fdate(d)} <span class="faint">(${n}d)</span>`; },
   nextMeeting: (coll, r) => { const m = state.data.meetings.filter(x => x.committeeId === r.id && x.status === 'Scheduled' && x.date >= today()).sort((a, b) => a.date < b.date ? -1 : 1)[0]; return m ? fdate(m.date) : '<span class="faint">—</span>'; },
   next: (coll, r) => { const d = WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : today()); return d ? `${fdate(d, 'dow')}${r.time ? ' ' + ftime(r.time) : ''}` : ''; },
   done: (coll, r) => (r.repeat || 'None') === 'None' ? (r.done ? chip('Done') : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')">Mark done</button>`) : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')" title="Skip to the next occurrence">Done for this time</button>`
 };
-const VIRTUAL_LABEL = { filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
+const VIRTUAL_LABEL = { rowActs:'', remState:'State', projectMoney:'Amount', keyDate:'Key date', callStage:'Next step', filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
 function lastMetDate(menteeId){ let d = null; state.data.mentorMeetings.forEach(m => { if(m.status === 'Held' && (m.menteeIds || []).includes(menteeId) && (!d || m.date > d)) d = m.date; }); return d; }
 
 function cellHtml(coll, k, r){
@@ -2004,6 +2180,7 @@ function cellHtml(coll, k, r){
     case 'ref': return esc(f.ref === 'courses' ? courseName(v) : refLabel(f.ref, WD.byId(state.data, f.ref, v)));
     case 'multiref': { const n = (v || []).map(id => refLabel(f.ref, WD.byId(state.data, f.ref, id))).filter(Boolean); return esc(n.length > 3 ? n.slice(0, 3).join(', ') + ` +${n.length - 3}` : n.join(', ')); }
     case 'links': return linksHtml(v, 2) || '<span class="faint">—</span>';
+    case 'people': { const a = v || []; return a.length ? esc(a.map(p => p.name + (p.role ? ' (' + p.role + ')' : '')).join(', ')) : '<span class="faint">—</span>'; }
     case 'checklist': { const a = v || []; return a.length ? `${a.filter(x => x.done).length}/${a.length} done` : '<span class="faint">—</span>'; }
     case 'url': return `<a href="${esc(v)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open ↗</a>`;
     case 'email': return `<a href="mailto:${esc(v)}" onclick="event.stopPropagation()">${esc(v)}</a>`;
@@ -2037,7 +2214,7 @@ function filteredRows(coll, extraFilter){
   });
   return rows;
 }
-function setSort(coll, k){ const cur = state.sort[coll] || SCHEMA[coll].sort || []; state.sort[coll] = [k, cur[0] === k && cur[1] === 'asc' ? 'desc' : 'asc']; rerender(); }
+function setSort(coll, k){ state.sortTouched = state.sortTouched || {}; state.sortTouched[coll] = true; const cur = state.sort[coll] || SCHEMA[coll].sort || []; state.sort[coll] = [k, cur[0] === k && cur[1] === 'asc' ? 'desc' : 'asc']; rerender(); }
 function setFilter(coll, k, v){ state.filters[coll] = state.filters[coll] || {}; state.filters[coll][k] = v; rerender(); }
 
 function listTable(coll, opts){
@@ -2053,7 +2230,7 @@ function listTable(coll, opts){
     <button class="btn ghost sm" onclick="exportXlsx('${coll}')" title="Download as Excel">⬇ Excel</button>${opts.noAdd ? '' : `<button class="btn sm" onclick="editRecord('${coll}', null, ${esc(JSON.stringify(opts.preset || null))})">+ Add ${esc(sch.one)}</button>`}</div>`;
   if(!state.data[coll].length) return toolbar + `<div class="card empty"><b>No ${esc(sch.label.toLowerCase())} yet</b>${opts.emptyHint || ''}<div style="margin-top:12px"><button class="btn sm" onclick="editRecord('${coll}', null, ${esc(JSON.stringify(opts.preset || null))})">+ Add ${esc(sch.one)}</button></div></div>`;
   const cur = state.sort[coll] || sch.sort || [];
-  const head = cols.map(k => { const f = sch.fields.find(x => x.k === k); const l = f ? f.label : (VIRTUAL_LABEL[k] || k); return `<th onclick="setSort('${coll}','${k}')">${esc(l.replace(/\s*\(.*\)$/, ''))}${cur[0] === k ? (cur[1] === 'asc' ? ' ↑' : ' ↓') : ''}</th>`; }).join('');
+  const head = cols.map(k => { const f = sch.fields.find(x => x.k === k); const l = f ? f.label : (k in VIRTUAL_LABEL ? VIRTUAL_LABEL[k] : k); return `<th onclick="setSort('${coll}','${k}')">${esc(l.replace(/\s*\(.*\)$/, ''))}${cur[0] === k ? (cur[1] === 'asc' ? ' ↑' : ' ↓') : ''}</th>`; }).join('');
   const body = rows.map(r => `<tr class="${isOverdue(r) ? 'overdue' : ''}" onclick="${opts.onRow ? opts.onRow(r) : `editRecord('${coll}','${r.id}')`}">${cols.map(k => `<td class="${['topic','title','expertise','outcomes','manuscript'].includes(k) ? 'wrap' : ''}">${cellHtml(coll, k, r)}</td>`).join('')}</tr>`).join('');
   return toolbar + (rows.length ? `<div class="tw"><table class="t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div><div class="count">${rows.length} of ${state.data[coll].length}</div>` : `<div class="card empty">Nothing matches these filters.</div>`);
 }
@@ -2074,6 +2251,7 @@ function rowsForExport(coll, rows){
       else if(f.type === 'checklist') v = (v || []).map(m => `${m.done ? '[x]' : '[ ]'} ${m.text}${m.due ? ' (' + m.due + ')' : ''}`).join('\n');
       else if(f.type === 'log') v = (v || []).map(m => `${m.date}: ${m.note}`).join('\n');
       else if(f.type === 'links') v = (v || []).map(m => `${m.label ? m.label + ': ' : ''}${m.url}`).join('\n');
+      else if(f.type === 'people') v = (v || []).map(m => [m.name, m.role, m.institution, m.email].filter(Boolean).join(', ')).join('\n');
       else if(f.type === 'unit'){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(v)); v = u ? u.title : v; }
       o[f.label] = v == null ? '' : v;
     });
@@ -2107,7 +2285,7 @@ function runSearch(q){
 document.addEventListener('click', e => { const p = $('#searchPanel'); if(p && !e.target.closest('.search')) p.classList.remove('open'); const m = $('#qaMenu'); if(m && !e.target.closest('#qaWrap')) m.remove(); });
 
 /* ============================ QUICK ADD ============================ */
-const QUICK = [['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
+const QUICK = [['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
 function toggleQuick(){
   const w = $('#qaWrap'); const m = $('#qaMenu'); if(m) return m.remove();
   w.insertAdjacentHTML('beforeend', `<div class="menu" id="qaMenu">${QUICK.map(([c, l]) => `<button onclick="$('#qaMenu').remove();editRecord('${c}', null, ${c === 'diary' || c === 'reminders' || c === 'holidays' || c === 'schedule' ? `{date:'${today()}'}` : 'null'})">${esc(l)}</button>`).join('')}</div>`);
@@ -2150,16 +2328,41 @@ function openDrawer(){
 function closeDrawer(){ const d = $('#drawerWrap'); if(d) d.remove(); }
 
 /* quick state changes */
+/* Pending / Overdue / Completed / Archived — nothing is ever dropped from the lists. */
+function itemBucket(coll, r){
+  const t = today();
+  if(r.archived) return 'archived';
+  if(coll === 'actions'){ if(r.status === 'Done') return 'completed'; return r.due && r.due < t ? 'overdue' : 'pending'; }
+  if((r.repeat || 'None') === 'None'){ if(r.done) return 'completed'; return r.date && r.date < t ? 'overdue' : 'pending'; }
+  return 'pending'; // repeating reminders stay active; their done history is kept on the record
+}
+const setArchived = guard(async (coll, id, on) => { const r = WD.byId(state.data, coll, id); if(!r) return; const x = Object.assign({}, r); if(on){ x.archived = true; x.archivedOn = today(); } else { delete x.archived; delete x.archivedOn; } await store.upsert(coll, x); toast(on ? 'Archived — find it under the Archived tab' : 'Restored'); });
+const reopenItem = guard(async (coll, id) => { const r = WD.byId(state.data, coll, id); if(!r) return; const x = Object.assign({}, r, coll === 'actions' ? { status: 'Open' } : { done: false }); delete x.doneOn; await store.upsert(coll, x); toast('Reopened'); });
+const archiveAllCompleted = guard(async coll => { const list = state.data[coll].filter(r => itemBucket(coll, r) === 'completed'); for(const r of list) await store.upsert(coll, Object.assign({}, r, { archived: true, archivedOn: today() })); toast(list.length + ' archived'); });
+function projectKeyDate(p){
+  const g = projectGroup(p), t = today(), call = p.callId ? WD.byId(state.data, 'fundingCalls', p.callId) : null;
+  if(g === 'toApply'){ const c = [[p.targetSubmit, 'Planned submission'], [call && call.lastDate, 'Call last date']].filter(x => WD.validDate(x[0])).sort((a, b) => a[0] < b[0] ? -1 : 1); return c[0] ? { date: c[0][0], label: c[0][1], open: true } : null; }
+  if(g === 'applied') return WD.validDate(p.resultExpected) ? { date: p.resultExpected, label: 'Result expected' } : WD.validDate(p.submitted) ? { date: p.submitted, label: 'Submitted' } : null;
+  if(g === 'sanctioned'){ if(WD.validDate(p.nextReportDue) && p.status !== 'Completed') return { date: p.nextReportDue, label: 'Report / UC due', open: true }; if(WD.validDate(p.end)) return { date: p.end, label: p.status === 'Completed' ? 'Ended' : 'Ends' }; }
+  return null;
+}
+function callNextDate(f){
+  const t = today();
+  const steps = [[f.opens, 'Opens'], [f.targetSubmit, 'My target'], [f.hardCopy, 'Hard copy due'], [f.lastDate, 'Last date'], [f.resultDate, 'Result']].filter(x => WD.validDate(x[0]) && x[0] >= t).sort((a, b) => a[0] < b[0] ? -1 : 1);
+  if(['Watching','Preparing'].includes(f.status || 'Watching') && WD.validDate(f.lastDate) && f.lastDate < t) return { date: f.lastDate, label: 'Last date passed' };
+  return steps[0] ? { date: steps[0][0], label: steps[0][1] } : null;
+}
 const quickDone = guard(async (coll, id) => {
   const r = WD.byId(state.data, coll, id); if(!r) return;
-  const patch = coll === 'actions' ? { status:'Done', doneOn: today() } : coll === 'examDuties' ? { status:'Completed' } : coll === 'evaluations' ? { status:'Completed', done: r.scripts || r.done } : { status:'Done' };
+  const patch = coll === 'actions' ? { status:'Done', doneOn: today() } : coll === 'events' ? { status:'Completed' } : coll === 'examDuties' ? { status:'Completed' } : coll === 'evaluations' ? { status:'Completed', done: r.scripts || r.done } : { status:'Done' };
   await store.upsert(coll, Object.assign({}, r, patch)); toast('Marked done');
   if($('#drawerWrap')) openDrawer();
 });
 const markReminder = guard(async id => {
   const r = WD.byId(state.data, 'reminders', id); if(!r) return;
-  if((r.repeat || 'None') === 'None') await store.upsert('reminders', Object.assign({}, r, { done: true, doneOn: today() }));
-  else { const occ = WD.nextOccurrence(r, today()) ; const prev = WD.buildAgenda(state.data, state.settings, today(), {}).find(i => i.ref && i.ref.id === id); await store.upsert('reminders', Object.assign({}, r, { lastDone: (prev && prev.occurrence) || occ })); }
+  const history = (r.history || []).slice(-199);
+  if((r.repeat || 'None') === 'None'){ history.push({ occurrence: r.date, on: today() }); await store.upsert('reminders', Object.assign({}, r, { done: true, doneOn: today(), history })); }
+  else { const occ = WD.nextOccurrence(r, today()) ; const prev = WD.buildAgenda(state.data, state.settings, today(), {}).find(i => i.ref && i.ref.id === id); const o = (prev && prev.occurrence) || occ; history.push({ occurrence: o, on: today() }); await store.upsert('reminders', Object.assign({}, r, { lastDone: o, history })); }
   toast('Reminder done'); if($('#drawerWrap')) openDrawer();
 });
 
@@ -2218,6 +2421,9 @@ VIEWS.dashboard = () => {
   const meetUp = state.data.meetings.filter(m => m.status === 'Scheduled' && m.date >= t).sort(byDate);
   const mentUp = state.data.mentorMeetings.filter(m => m.status === 'Scheduled' && m.date >= t).sort(byDate);
   const dutyUp = state.data.examDuties.filter(x => x.status === 'Assigned' && x.date >= t).sort(byDate);
+  const evUp = allEvents().filter(e => e.end >= t && !['Cancelled','Not attending','Completed'].includes(e.status)).sort((a, b) => a.start < b.start ? -1 : 1);
+  const callsOpen = state.data.fundingCalls.filter(f => callBucket(f) === 'open' && WD.validDate(f.lastDate)).sort((a, b) => a.lastDate < b.lastDate ? -1 : 1);
+  const toApply = state.data.projects.filter(p => projectGroup(p) === 'toApply').length;
   const tile = (n, l, s, color, view, tab) => `<button class="tile" style="--tc:var(--c-${color})" title="${esc(String(s || '').replace(/<[^>]+>/g, ''))}" onclick="go('${view}'${tab ? `,'${tab}'` : ''})"><div class="n">${n}</div><div class="l">${l}</div><div class="s">${s || '&nbsp;'}</div></button>`;
   const tiles = `<div class="tiles">
     ${tile(sessions.length, 'Classes today', sessions.length ? sessions.map(s => courseName(s.courseId, true)).join(', ') : (status.teaching ? 'No classes scheduled' : status.reason), 'classes', 'timetable', 'week')}
@@ -2226,8 +2432,8 @@ VIEWS.dashboard = () => {
     ${tile(openActs.length, 'Open action items', overdueActs ? `<span style="color:var(--bad)">${overdueActs} overdue</span>` : 'None overdue', 'action', 'actions')}
     ${tile(underReview, 'Papers in review', pubYear + ' published in ' + t.slice(0, 4), 'publication', 'publications')}
     ${tile(activeProj.length, 'Projects & grants', [activeProj.length ? money(activeProj.reduce((a, x) => a + (+x.amount || 0), 0)) + ' active' : '', nextRep ? 'report due ' + fdate(nextRep.nextReportDue, 'short') : (state.data.projects.filter(x => x.status === 'Submitted').length ? state.data.projects.filter(x => x.status === 'Submitted').length + ' submitted' : '')].filter(Boolean).join(' · ') || 'None active', 'project', 'projects')}
-    ${tile(confUp.length, 'Conferences', confUp[0] ? 'Next: ' + esc(confUp[0].title) + ' · ' + fdate(confUp[0].start, 'short') : confYear + ' attended in ' + t.slice(0, 4), 'conference', 'conferences')}
-    ${tile(wsUp.length, 'Workshops & FDPs', wsUp[0] ? 'Next: ' + esc(wsUp[0].title) + ' · ' + fdate(wsUp[0].start, 'short') : wsYear + ' attended in ' + t.slice(0, 4), 'plan', 'conferences')}
+    ${tile(callsOpen.length, 'Funding calls open', callsOpen[0] ? 'Next last date: ' + esc(callsOpen[0].agency || callsOpen[0].title) + ' · ' + fdate(callsOpen[0].lastDate, 'short') : (toApply ? toApply + ' proposal' + (toApply > 1 ? 's' : '') + ' in preparation' : 'None being tracked'), 'project', 'fundingCalls')}
+    ${tile(evUp.length, 'Upcoming events', evUp[0] ? 'Next: ' + esc(evUp[0].title) + ' · ' + fdate(evUp[0].start, 'short') : 'Nothing planned', 'conference', 'events')}
     ${tile(revHand.length, 'Peer reviews in hand', nextRev ? 'Next due ' + fdate(nextRev.due, 'short') + (nextRev.due < t ? ' (overdue)' : '') : revYear + ' submitted in ' + t.slice(0, 4), 'review', 'reviews')}
     ${tile(meetUp.length, 'Meetings', meetUp[0] ? 'Next: ' + esc(WD.meetingTitle(state.data, meetUp[0])) + ' · ' + fdate(meetUp[0].date, 'short') : 'None scheduled', 'meeting', 'meetings')}
     ${tile(mentUp.length, 'Mentoring meetings', mentUp[0] ? 'Next ' + fdate(mentUp[0].date, 'short') + (mentUp[0].time ? ' ' + ftime(mentUp[0].time) : '') : 'None scheduled', 'mentoring', 'mentorMeetings')}
@@ -2270,6 +2476,11 @@ VIEWS.dashboard = () => {
       ${nextHol ? `<div><div class="k">Next holiday</div><div class="v">${fdate(nextHol.date, 'short')} <span class="muted" style="font-weight:500">${esc(nextHol.name)}</span></div></div>` : ''}
     </div>` : (state.data.semesters.length ? `<div class="sem-strip"><div class="muted">Not inside a semester today. <button class="linkbtn" onclick="go('academic')">See semesters →</button></div></div>` : '');
 
+  // upcoming events by category
+  const evSoon = evUp.filter(e => e.start <= WD.addDays(t, 60)).slice(0, 7);
+  const eventsCard = `<div class="card"><h3>Upcoming events<span class="r"><button class="linkbtn" onclick="go('events')">All events →</button></span></h3>
+    ${evSoon.length ? `<div class="tl">${evSoon.map(e => `<div class="tli click" onclick="editRecord('${e.src}','${e.id}')"><div class="tm">${e.start <= t ? 'Now' : fdate(e.start, 'short')}</div><div class="bd"><span class="cat" style="color:var(--c-${EVENT_COLORS[e.cat] || 'meeting'})"><i style="background:var(--c-${EVENT_COLORS[e.cat] || 'meeting'})"></i>${esc(e.cat)}</span><div class="tt">${esc(e.title)}</div><div class="dt">${[e.role, e.venue, e.end !== e.start ? 'till ' + fdate(e.end, 'short') : ''].filter(Boolean).map(esc).join(' · ')}</div></div></div>`).join('')}</div>` : '<div class="empty" style="padding:12px">No events in the next 60 days. <button class="linkbtn" onclick="editRecord(\'events\')">Add one</button></div>'}</div>`;
+
   // coverage
   const cs = currentSemester();
   const courses = cs ? state.data.courses.filter(c => c.semesterId === cs.id) : [];
@@ -2287,7 +2498,8 @@ VIEWS.dashboard = () => {
     <dl class="kv" style="margin-top:12px;grid-template-columns:140px 1fr"><dt>Reviews in hand</dt><dd>${revs}</dd><dt>Next event</dt><dd>${upConf ? `${esc(upConf.title)} <span class="faint">· ${fdate(upConf.start, 'short')}</span>` : '—'}</dd><dt>Active collaborations</dt><dd>${state.data.collaborations.filter(c => c.status === 'Active').length}</dd></dl></div>`;
 
   // projects
-  const projCard = activeProj.length || state.data.projects.length ? `<div class="card"><h3>Projects & grants<span class="r"><button class="linkbtn" onclick="go('projects','timeline')">Timeline →</button></span></h3>${(activeProj.length ? activeProj : state.data.projects.slice(0, 4)).slice(0, 5).map(pj => {
+  const projCard = activeProj.length || state.data.projects.length ? `<div class="card"><h3>Projects & grants<span class="r"><button class="linkbtn" onclick="go('projects','toApply')">All projects →</button></span></h3>
+    <div class="proj-pipe">${['toApply','applied','sanctioned'].map(k => `<button onclick="go('projects','${k}')"><b>${state.data.projects.filter(p => projectGroup(p) === k).length}</b><span>${PROJECT_GROUPS[k].label}</span></button>`).join('')}</div>${(activeProj.length ? activeProj : state.data.projects.slice(0, 4)).slice(0, 5).map(pj => {
       const span = pj.start && pj.end ? WD.diffDays(pj.start, pj.end) : 0, gone = pj.start ? WD.diffDays(pj.start, t) : 0;
       const tp = span ? Math.max(0, Math.min(100, Math.round(gone / span * 100))) : null; const pr = +pj.progress || 0;
       return `<div style="padding:7px 0;border-top:1px solid var(--border);cursor:pointer" onclick="editRecord('projects','${pj.id}')"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-weight:600;font-size:13.5px">${esc(pj.title)}</b>${chip(pj.status)}</div>
@@ -2304,7 +2516,7 @@ VIEWS.dashboard = () => {
   return `<div class="hello"><div><h1>${greeting()}${p.name ? ', ' + esc(p.name) : ''}</h1><div class="d">${fdate(t, 'long')}</div>${[p.designation, p.department, p.institution].filter(Boolean).length ? `<div class="d" style="font-size:13px">${esc([p.designation, p.department, p.institution].filter(Boolean).join(' · '))}</div>` : ''}</div>
     <div class="qa"><button class="btn sm" onclick="editRecord('diary',null,{date:'${t}'})">+ Log class</button><button class="btn ghost sm" onclick="editRecord('extraClasses',null,{date:'${t}'})">+ Extra class</button><button class="btn ghost sm" onclick="editRecord('reminders',null,{date:'${t}'})">+ Reminder</button><button class="btn ghost sm" onclick="editRecord('actions')">+ Action</button></div></div>
     ${setup}${semStrip}${tiles}
-    <div class="grid dash-main"><div class="grid" style="align-content:start">${attCard}${todayCard}${teachCard}</div><div class="grid" style="align-content:start">${notepadCard()}${upCard}${resCard}${projCard}</div></div>`;
+    <div class="grid dash-main"><div class="grid" style="align-content:start">${attCard}${todayCard}${eventsCard}${teachCard}</div><div class="grid" style="align-content:start">${notepadCard()}${upCard}${resCard}${projCard}</div></div>`;
 };
 
 /* ---------------- CALENDAR ---------------- */
@@ -2595,11 +2807,80 @@ function sparkline(){
 }
 
 /* ---------------- PROJECTS ---------------- */
+const PG_STATUS = { toApply:'Concept note', applied:'Submitted', sanctioned:'Sanctioned', closed:'Rejected' };
+function projectCard(p){
+  const g = projectGroup(p), k = projectKeyDate(p), call = p.callId ? WD.byId(state.data, 'fundingCalls', p.callId) : null;
+  const team = p.team || [];
+  const links = [[p.conceptLink, 'Concept note'], [p.proposalLink, 'Proposal'], [p.sanctionLink, 'Sanction order']].filter(x => x[0]).map(([u, l]) => ({ url: u, label: l })).concat(p.docs || []);
+  const span = p.start && p.end ? WD.diffDays(p.start, p.end) : 0, gone = p.start ? WD.diffDays(p.start, today()) : 0, tp = span ? Math.max(0, Math.min(100, Math.round(gone / span * 100))) : null, pr = +p.progress || 0;
+  return `<div class="card pcard" onclick="editRecord('projects','${p.id}')">
+    <div class="pc-top"><b class="pc-title">${esc(p.title)}</b>${chip(p.status)}</div>
+    <div class="faint pc-sub">${esc([p.agency, p.scheme].filter(Boolean).join(' · ') || 'Agency not set')}${call ? ` · <span class="chip navy">Call: ${esc(call.title)}</span>` : ''}</div>
+    <dl class="pc-kv"><dt>PI</dt><dd>${esc(p.pi || (p.role === 'PI' ? state.settings.profile.name || 'You' : '—'))}</dd>
+      <dt>Co-PIs / team</dt><dd>${team.length ? esc(team.map(x => x.name + (x.role && x.role !== 'Co-PI' ? ' (' + x.role + ')' : '')).join(', ')) : '<span class="faint">—</span>'}</dd>
+      <dt>${g === 'sanctioned' ? 'Sanctioned' : 'Budget'}</dt><dd>${g === 'sanctioned' ? (money(p.amount) || '—') : (money(p.amountRequested) || '—')}${p.durationMonths ? ' · ' + esc(p.durationMonths) + ' months' : ''}</dd>
+      ${k ? `<dt>${esc(k.label)}</dt><dd style="${k.open && k.date < today() ? 'color:var(--bad);font-weight:600' : ''}">${fdate(k.date)} <span class="faint">(${/^\d/.test(relDay(k.date)) ? 'on ' + relDay(k.date) : relDay(k.date).toLowerCase()})</span></dd>` : ''}</dl>
+    ${p.conceptNote && g !== 'sanctioned' ? `<div class="pc-note">${esc(p.conceptNote.slice(0, 220))}${p.conceptNote.length > 220 ? '…' : ''}</div>` : ''}
+    ${g === 'sanctioned' && p.status !== 'Completed' ? `<div style="margin-top:8px">${bar(pr, tp !== null && pr + 15 < tp ? 'warn' : 'ok')}<div class="faint" style="font-size:11.5px;margin-top:3px">${pr}% done${tp !== null ? ` · ${tp}% of time elapsed` : ''}</div></div>` : ''}
+    ${links.length ? `<div style="margin-top:8px">${linksHtml(links, 4)}</div>` : ''}
+    <div class="pc-actions">${g === 'toApply' ? `<button class="btn ghost sm" onclick="event.stopPropagation();setProjectStatus('${p.id}','Submitted')">Mark as applied</button>` : g === 'applied' ? `<button class="btn ghost sm" onclick="event.stopPropagation();setProjectStatus('${p.id}','Sanctioned')">Mark sanctioned</button><button class="btn ghost sm" onclick="event.stopPropagation();setProjectStatus('${p.id}','Rejected')">Not funded</button>` : ''}</div></div>`;
+}
+const setProjectStatus = guard(async (id, st) => {
+  const p = WD.byId(state.data, 'projects', id); if(!p) return;
+  const x = Object.assign({}, p, { status: st });
+  if(st === 'Submitted' && !x.submitted) x.submitted = today();
+  if(st === 'Sanctioned' && !x.sanctioned) x.sanctioned = today();
+  await store.upsert('projects', x);
+  if(st === 'Submitted' && x.callId){ const f = WD.byId(state.data, 'fundingCalls', x.callId); if(f && ['Watching','Preparing'].includes(f.status || 'Watching')) await store.upsert('fundingCalls', Object.assign({}, f, { status: 'Submitted', submittedOn: f.submittedOn || today() })); }
+  toast('Moved to ' + PROJECT_GROUPS[projectGroup(x)].label);
+  if(st === 'Sanctioned') editRecord('projects', id);
+});
 VIEWS.projects = () => {
-  const tb = tabs('projects', [['list','Projects'],['timeline','Timeline']]);
-  const funded = state.data.projects.filter(p => ['Sanctioned','Ongoing','Completed'].includes(p.status));
-  const sub = `${state.data.projects.filter(p => ['Sanctioned','Ongoing'].includes(p.status)).length} active · ${state.data.projects.filter(p => p.status === 'Submitted').length} under consideration · ${money(funded.reduce((a, p) => a + (+p.amount || 0), 0)) || '₹0'} funded in total`;
-  return pageHead('Projects & grants', sub) + tb.html + (tb.cur === 'list' ? listTable('projects') : gantt());
+  const ps = state.data.projects, cnt = k => ps.filter(p => projectGroup(p) === k).length;
+  const tb = tabs('projects', [['toApply', `Going to apply (${cnt('toApply')})`], ['applied', `Applied (${cnt('applied')})`], ['sanctioned', `Sanctioned (${cnt('sanctioned')})`], ['closed', `Not funded (${cnt('closed')})`], ['all', 'All (table)'], ['timeline', 'Timeline']]);
+  const funded = ps.filter(p => projectGroup(p) === 'sanctioned');
+  const sub = `${cnt('toApply')} going to apply · ${cnt('applied')} applied (${money(ps.filter(p => projectGroup(p) === 'applied').reduce((a, p) => a + (+p.amountRequested || 0), 0)) || '₹0'} requested) · ${cnt('sanctioned')} sanctioned (${money(funded.reduce((a, p) => a + (+p.amount || 0), 0)) || '₹0'})`;
+  let body = '';
+  if(tb.cur === 'all') body = listTable('projects');
+  else if(tb.cur === 'timeline') body = gantt();
+  else {
+    const list = ps.filter(p => projectGroup(p) === tb.cur).sort((a, b) => { const x = projectKeyDate(a), y = projectKeyDate(b); return (x ? x.date : '9') < (y ? y.date : '9') ? -1 : 1; });
+    const hint = { toApply: 'Ideas and proposals you are preparing — keep the concept note, team and target date here. Link a funding call to see its last date.', applied: 'Submitted proposals waiting for a decision.', sanctioned: 'Funded projects — progress, milestones and report / UC dates.', closed: 'Proposals that were not funded or not submitted — kept for reuse.' }[tb.cur];
+    body = `<div class="toolbar"><span class="muted" style="font-size:13.5px;flex:1;min-width:200px">${hint}</span><button class="btn sm" onclick="editRecord('projects', null, {status:'${PG_STATUS[tb.cur]}'})">+ Add project</button></div>` +
+      (list.length ? `<div class="grid g2">${list.map(projectCard).join('')}</div>` : `<div class="card empty"><b>Nothing here yet</b></div>`);
+  }
+  return pageHead('Projects & grants', sub, `<button class="btn ghost sm" onclick="go('fundingCalls')">Funding calls →</button>`) + tb.html + body;
+};
+/* ---------------- FUNDING CALLS ---------------- */
+function callBucket(f){
+  const st = f.status || 'Watching', t = today();
+  if(['Submitted','Result awaited'].includes(st)) return 'submitted';
+  if(['Watching','Preparing'].includes(st)) return (!f.lastDate || f.lastDate >= t) ? 'open' : 'missed';
+  return 'closed';
+}
+function callCard(f){
+  const t = today(), steps = [['announced','Announced'],['opens','Opens'],['targetSubmit','My target'],['hardCopy','Hard copy'],['lastDate','Last date'],['submittedOn','Submitted'],['resultDate','Result']].filter(([k]) => WD.validDate(f[k]));
+  const left = WD.validDate(f.lastDate) ? WD.diffDays(t, f.lastDate) : null;
+  const projs = state.data.projects.filter(p => p.callId === f.id);
+  return `<div class="card pcard" onclick="editRecord('fundingCalls','${f.id}')">
+    <div class="pc-top"><b class="pc-title">${esc(f.title)}</b>${chip(f.status || 'Watching')}</div>
+    <div class="faint pc-sub">${esc([f.agency, f.area, f.amount ? 'up to ' + money(f.amount) : '', f.duration].filter(Boolean).join(' · '))}</div>
+    ${left !== null && callBucket(f) === 'open' ? `<div class="pc-count ${left <= 7 ? 'bad' : left <= 21 ? 'warn' : ''}"><b>${left}</b> day${left === 1 ? '' : 's'} to the last date</div>` : ''}
+    <ol class="steps">${steps.map(([k, l]) => `<li class="${f[k] < t ? 'past' : ''} ${k === 'lastDate' ? 'key' : ''}"><span>${l}</span><b>${fdate(f[k])}</b></li>`).join('')}</ol>
+    ${projs.length ? `<div class="faint" style="font-size:12.5px;margin-top:6px">Proposal: ${projs.map(p => `<button class="linkbtn" onclick="event.stopPropagation();editRecord('projects','${p.id}')">${esc(p.title || 'untitled')}</button>`).join(', ')}</div>` : ''}
+    <div class="pc-actions">${f.link ? `<a class="btn ghost sm" href="${esc(f.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Call notice ↗</a>` : ''}${!projs.length && callBucket(f) === 'open' ? `<button class="btn ghost sm" onclick="event.stopPropagation();projectFromCall('${f.id}')">+ Start proposal</button>` : ''}</div></div>`;
+}
+VIEWS.fundingCalls = () => {
+  const fc = state.data.fundingCalls, cnt = k => fc.filter(f => callBucket(f) === k).length;
+  const tb = tabs('fundingCalls', [['open', `Open & upcoming (${cnt('open')})`], ['submitted', `Submitted (${cnt('submitted')})`], ['missed', `Last date passed (${cnt('missed')})`], ['closed', `Closed (${cnt('closed')})`], ['all', 'All (table)']]);
+  let body = '';
+  if(tb.cur === 'all') body = listTable('fundingCalls');
+  else {
+    const list = fc.filter(f => callBucket(f) === tb.cur).sort((a, b) => (a.lastDate || '9') < (b.lastDate || '9') ? -1 : 1);
+    body = `<div class="toolbar"><span class="muted" style="font-size:13.5px;flex:1;min-width:200px">${tb.cur === 'missed' ? 'Calls still marked Watching / Preparing whose last date has passed — mark them Submitted, Missed or Not applying.' : 'Reminders go out before the opening date, your planned submission date, the hard-copy date and the last date (Settings → Reminders → Funding calls).'}</span><button class="btn sm" onclick="editRecord('fundingCalls')">+ Add funding call</button></div>` +
+      (list.length ? `<div class="grid g3">${list.map(callCard).join('')}</div>` : `<div class="card empty"><b>Nothing here</b>${tb.cur === 'open' ? 'Add calls you come across — ANRF, DST, DBT, CSIR, UGC, industry, internal seed grants.' : ''}</div>`);
+  }
+  return pageHead('Funding calls', 'Funding opportunities with their key dates — from announcement to submission', `<button class="btn ghost sm" onclick="go('projects')">Projects →</button>`) + tb.html + body;
 };
 function gantt(){
   const ps = state.data.projects.filter(p => WD.validDate(p.start) && WD.validDate(p.end)).sort((a, b) => a.start < b.start ? -1 : 1);
@@ -2639,11 +2920,59 @@ VIEWS.meetings = () => {
   const up = state.data.meetings.filter(m => m.status === 'Scheduled' && m.date >= t).length;
   return pageHead('Meetings', `Department, school, committee, project, parent and any other meetings — with agenda, minutes, documents and action items${up ? ` · ${up} coming up` : ''}`) + tb.html + body;
 };
+function bucketTabs(coll){
+  const n = k => state.data[coll].filter(r => itemBucket(coll, r) === k).length;
+  return tabs(coll, [['pending', `Pending (${n('pending')})`], ['overdue', `Overdue (${n('overdue')})`], ['completed', `Completed (${n('completed')})`], ['archived', `Archived (${n('archived')})`], ['all', `All (${state.data[coll].length})`]]);
+}
+function bucketPage(coll, title, sub){
+  const tb = bucketTabs(coll), cur = tb.cur;
+  const filter = cur === 'all' ? null : (r => itemBucket(coll, r) === cur || (cur === 'completed' && coll === 'reminders' && !r.archived && (r.repeat || 'None') !== 'None' && (r.history || []).length));
+  const sortKey = { pending: coll === 'actions' ? ['due','asc'] : ['date','asc'], overdue: [coll === 'actions' ? 'due' : 'date','asc'], completed: [coll === 'actions' ? 'doneOn' : 'doneOn','desc'], archived: ['archivedOn','desc'], all: [coll === 'actions' ? 'due' : 'date','desc'] }[cur];
+  if(!state.sortTouched || !state.sortTouched[coll]) state.sort[coll] = sortKey;
+  const note = { overdue: 'Past their date and not done. They stay here until you mark them done or archive them.', completed: `Done items are kept here with the date they were completed.${coll === 'reminders' ? ' Repeating reminders show how many times they were done.' : ''}`, archived: 'Archived items are out of your way but never deleted. Restore any time.' }[cur];
+  return pageHead(title, sub) + tb.html + (note ? `<div class="toolbar"><span class="muted" style="font-size:13.5px;flex:1">${note}</span>${cur === 'completed' ? `<button class="btn ghost sm" onclick="archiveAllCompleted('${coll}')">Archive all completed</button>` : ''}</div>` : '') +
+    listTable(coll, { filter, preset: coll === 'reminders' ? { date: today() } : { due: today() }, cols: cur === 'completed' && coll === 'actions' ? ['doneOn','due','title','category','source','docs','rowActs'] : undefined });
+}
 VIEWS.actions = () => {
-  const open = state.data.actions.filter(a => a.status !== 'Done');
-  return pageHead('Action items', `${open.length} open${open.filter(a => a.due && a.due < today()).length ? ` · <span style="color:var(--bad)">${open.filter(a => a.due && a.due < today()).length} overdue</span>` : ''}`) + listTable('actions');
+  const n = k => state.data.actions.filter(r => itemBucket('actions', r) === k).length;
+  return bucketPage('actions', 'Action items', `${n('pending')} pending${n('overdue') ? ` · <span style="color:var(--bad)">${n('overdue')} overdue</span>` : ''} · ${n('completed')} completed`);
 };
-VIEWS.reminders = () => pageHead('Reminders', 'One-off or repeating — they appear on the dashboard, in the bell, and in the daily email') + listTable('reminders', { preset: { date: today() } });
+VIEWS.reminders = () => bucketPage('reminders', 'Reminders', 'One-off or repeating — shown on the dashboard, in the bell and in the morning email. Nothing disappears: done and past reminders stay under their tabs.');
+
+/* ---------------- EVENTS ---------------- */
+const CONF_TO_CAT = c => ['FDP','Short-term course','Summer / winter school'].includes(c.kind) ? 'FDP / training programme' : (c.role === 'Organiser / convener' ? 'Event I am in-charge of' : 'External conference / workshop');
+const EVENT_COLORS = { 'FDP / training programme':'plan', 'Institutional event':'event', 'Event I am in-charge of':'action', 'Research event':'publication', 'External conference / workshop':'conference', 'Teaching-related event':'classes', 'Other academic activity':'meeting' };
+function allEvents(){
+  const out = state.data.events.map(e => ({ src:'events', id:e.id, title:e.title, cat:e.category || 'Other academic activity', start:e.start, end:e.end || e.start, time:e.time, role:e.role, venue:[e.venue, e.mode && e.mode !== 'Offline' ? e.mode : ''].filter(Boolean).join(' · '), organiser:e.organiser, status:e.status || 'Planned', tasks:e.tasks || [], reg:e.regDeadline, docs:e.docs || [] }));
+  state.data.conferences.forEach(c => { if(WD.validDate(c.start)) out.push({ src:'conferences', id:c.id, title:c.title, cat:CONF_TO_CAT(c), start:c.start, end:c.end || c.start, role:c.role, venue:c.venue, organiser:c.organiser, status:c.status, tasks:[], reg:c.registrationDeadline, docs:c.docs || [], extra:c.kind }); });
+  return out;
+}
+function eventRow(e){
+  const t = today(), d = WD.toDate(e.start), live = !['Cancelled','Not attending'].includes(e.status);
+  const tasks = e.tasks.length ? `${e.tasks.filter(x => x.done).length}/${e.tasks.length} tasks` : '';
+  return `<div class="ev-row ${e.end < t ? 'past' : ''} ${live ? '' : 'off'}" onclick="editRecord('${e.src}','${e.id}')">
+    <div class="ev-date"><b>${d.getUTCDate()}</b><span>${MON[d.getUTCMonth()]}</span>${e.end !== e.start ? `<em>–${fdate(e.end, 'short')}</em>` : ''}</div>
+    <div class="ev-body"><div class="cat" style="color:var(--c-${EVENT_COLORS[e.cat] || 'meeting'})"><i style="background:var(--c-${EVENT_COLORS[e.cat] || 'meeting'})"></i>${esc(e.cat)}</div>
+      <div class="ev-title">${esc(e.title)}</div>
+      <div class="dt">${[e.time && ftime(e.time), e.role, e.organiser, e.venue].filter(Boolean).map(esc).join(' · ')}${e.reg && e.reg >= t && e.status === 'Planned' ? ` · <span style="color:var(--warn);font-weight:600">register by ${fdate(e.reg, 'short')}</span>` : ''}${tasks ? ' · ' + tasks : ''}</div>
+      ${e.docs.length ? `<div style="margin-top:4px">${linksHtml(e.docs, 3)}</div>` : ''}</div>
+    <div class="rt">${chip(e.status)}${e.start <= t && e.end >= t && live ? '<span class="chip ok">Today</span>' : ''}</div></div>`;
+}
+VIEWS.events = () => {
+  const t = today(), all = allEvents();
+  const when = state.filters.evWhen || 'upcoming', cat = state.filters.evCat || '';
+  const inWhen = e => when === 'upcoming' ? e.end >= t : when === 'past' ? e.end < t : true;
+  const counts = {}; all.filter(inWhen).forEach(e => counts[e.cat] = (counts[e.cat] || 0) + 1);
+  let list = all.filter(inWhen).filter(e => !cat || e.cat === cat).sort((a, b) => (a.start + (a.time || '')) < (b.start + (b.time || '')) ? -1 : 1);
+  if(when === 'past') list.reverse();
+  let lastM = '', body = '';
+  list.forEach(e => { const m = e.start.slice(0, 7); if(m !== lastM){ lastM = m; body += `<div class="agday" style="margin-top:16px">${['January','February','March','April','May','June','July','August','September','October','November','December'][+m.slice(5) - 1]} ${m.slice(0, 4)}</div>`; } body += eventRow(e); });
+  const chips = `<div class="ev-cats"><button class="evc ${!cat ? 'on' : ''}" onclick="state.filters.evCat='';rerender()">All <b>${Object.values(counts).reduce((a, b) => a + b, 0)}</b></button>${EVENT_CATS.map(c => `<button class="evc ${cat === c ? 'on' : ''}" style="--ec:var(--c-${EVENT_COLORS[c]})" onclick="state.filters.evCat='${c}';rerender()"><i></i>${esc(c)} <b>${counts[c] || 0}</b></button>`).join('')}</div>`;
+  const whenBtns = ['upcoming','past','all'].map(w => `<button class="tab ${when === w ? 'active' : ''}" onclick="state.filters.evWhen='${w}';rerender()">${{ upcoming:'Upcoming', past:'Past', all:'All' }[w]}</button>`).join('');
+  return pageHead('Events', 'FDPs, institutional events, events you are in charge of, research and teaching events, external conferences and workshops', `<button class="btn sm" onclick="editRecord('events', null, {category:'${cat || 'Institutional event'}', start:'${t}'})">+ Add event</button>`) +
+    `<div class="tabs">${whenBtns}</div>${chips}` + (list.length ? `<div class="card ev-list">${body}</div>` : `<div class="card empty"><b>No ${when === 'all' ? '' : when} events${cat ? ' in “' + esc(cat) + '”' : ''}</b>Add one with “+ Add event”. Conferences and workshops from Research → Conferences also appear here.</div>`) +
+    `<div class="faint" style="font-size:12.5px;margin-top:8px">Conferences and workshops recorded under Research → Conferences & workshops (with abstract deadlines) are included here automatically.</div>`;
+};
 
 /* ---------------- SETTINGS ---------------- */
 VIEWS.settings = () => {
@@ -2842,9 +3171,28 @@ function buildSample(){
   out.contacts.push(mk({ name: 'Dr. S. Rao', designation: 'Associate Professor', institution: 'NIT Trichy', expertise: 'DFT, cathode modelling', relation: 'Potential collaborator' }));
   out.contacts.push(mk({ name: 'Dr. A. Fernandes', designation: 'Scientist', institution: 'CSIR-CECRI', expertise: 'Na-ion pouch cells', relation: 'Potential reviewer / examiner' }));
   [[-365, 210, 7, 6], [-180, 268, 8, 7], [-20, 331, 9, 8]].forEach(([n, c, h, i10]) => out.metrics.push(mk({ date: D(n), source: 'Scopus', citations: String(c), hIndex: String(h), i10: String(i10), documents: String(14 + Math.round((n + 365) / 120)) })));
-  out.projects.push(mk({ title: 'Low-cost polyanionic cathodes for sodium-ion batteries', agency: 'Christ University', scheme: 'Seed Money', role: 'PI', amount: '300000', status: 'Ongoing', sanctioned: D(-200), start: D(-180), end: D(185), nextReportDue: D(12), progress: '45', milestones: [{ text: 'Procure tube furnace', due: D(-150), done: true }, { text: 'Optimise NFPP synthesis', due: D(-20), done: true }, { text: 'Electrochemical evaluation', due: D(60), done: false }, { text: 'Final report & paper', due: D(185), done: false }], log: [{ date: D(-25), note: 'Phase-pure NFPP obtained at 500 °C; 105 mAh/g at 0.1C' }] }));
-  out.projects.push(mk({ title: 'Operando studies of layered oxide cathodes', agency: 'ANRF', scheme: 'Core Research Grant', role: 'PI', amount: '3200000', status: 'Submitted', submitted: D(-60), start: '', end: '', progress: '0' }));
-  out.projects.push(mk({ title: 'MnO2 supercapacitors from battery waste', agency: 'DST', scheme: 'TDP', role: 'Co-PI', amount: '1850000', status: 'Ongoing', start: D(-500), end: D(230), nextReportDue: D(55), progress: '60', milestones: [{ text: 'Prototype device', due: D(100), done: false }] }));
+  // events across categories
+  [['FDP on Outcome-Based Education', 'FDP / training programme', 'Participant', 6, 8, 'IQAC, Christ University'],
+   ['Science Day exhibition', 'Event I am in-charge of', 'In-charge / coordinator', 18, 18, 'Department of Physics and Electronics', [{ text: 'Book auditorium', due: D(5), done: true }, { text: 'Finalise student exhibits list', due: D(10), done: false }, { text: 'Send invitation to chief guest', due: D(12), done: false }]],
+   ['University Foundation Day', 'Institutional event', 'Attending as delegate', 25, 25, 'Christ University'],
+   ['Research colloquium — energy materials', 'Research event', 'Speaker / presenter', 32, 32, 'Centre for Research'],
+   ['Guest lecture for II M.Sc.: Battery recycling', 'Teaching-related event', 'Organiser / convener', 13, 13, 'Department'],
+   ['Alumni interaction', 'Other academic activity', 'Participant', -12, -12, 'Department', null, 'Completed'],
+   ['Induction programme for new faculty', 'Institutional event', 'Resource person', -30, -29, 'HR & IQAC', null, 'Completed']]
+    .forEach(([title, category, role, a, b, organiser, tasks, status]) => out.events.push(mk({ title, category, role, start: D(a), end: D(b), organiser, status: status || 'Confirmed', tasks: tasks || [], regDeadline: category === 'FDP / training programme' ? D(3) : '' })));
+  // funding calls
+  const call1 = mk({ title: 'Advanced Research Grant (ARG)', agency: 'ANRF', area: 'All areas of science & engineering', status: 'Preparing', announced: D(-20), opens: D(-5), targetSubmit: D(18), lastDate: D(24), amount: '20000000', duration: '3 years', link: 'https://anrfonline.in' });
+  const call2 = mk({ title: 'Materials for Energy Storage call', agency: 'DST', area: 'Energy storage', status: 'Watching', announced: D(-2), opens: D(15), lastDate: D(55), amount: '6000000', duration: '3 years' });
+  const call3 = mk({ title: 'Core Research Grant', agency: 'ANRF', status: 'Submitted', announced: D(-160), opens: D(-130), lastDate: D(-70), submittedOn: D(-72), resultDate: D(40) });
+  const call4 = mk({ title: 'Industry–academia seed fund', agency: 'BIRAC', status: 'Watching', announced: D(-60), opens: D(-45), lastDate: D(-6) });
+  out.fundingCalls.push(call1, call2, call3, call4);
+  const me = state.settings.profile.name || 'You';
+  out.projects.push(mk({ title: 'Low-cost polyanionic cathodes for sodium-ion batteries', agency: 'Christ University', scheme: 'Seed Money', role: 'PI', pi: me, team: [{ name: 'Dr. P. Iyer', role: 'Collaborator', institution: 'IISc Bengaluru' }], amount: '300000', amountRequested: '350000', durationMonths: '12', refNo: 'CU/SEED/2026/114', status: 'Ongoing', sanctioned: D(-200), start: D(-180), end: D(185), nextReportDue: D(12), progress: '45', milestones: [{ text: 'Procure tube furnace', due: D(-150), done: true }, { text: 'Optimise NFPP synthesis', due: D(-20), done: true }, { text: 'Electrochemical evaluation', due: D(60), done: false }, { text: 'Final report & paper', due: D(185), done: false }], log: [{ date: D(-25), note: 'Phase-pure NFPP obtained at 500 °C; 105 mAh/g at 0.1C' }] }));
+  out.projects.push(mk({ title: 'Operando studies of layered oxide cathodes', agency: 'ANRF', scheme: 'Core Research Grant', callId: call3.id, role: 'PI', pi: me, team: [{ name: 'Dr. S. Rao', role: 'Co-PI', institution: 'NIT Trichy' }], amountRequested: '3200000', durationMonths: '36', refNo: 'CRG/2026/004512', status: 'Under review', submitted: D(-72), resultExpected: D(40), conceptNote: 'Track the O3→P3 phase transitions of Ni/Mn layered oxides during cycling with operando XRD and relate them to capacity fade.' }));
+  out.projects.push(mk({ title: 'Templated porous carbons for Na-ion hybrid capacitors', agency: 'ANRF', scheme: 'Advanced Research Grant', callId: call1.id, role: 'PI', pi: me, team: [{ name: 'Dr. A. Fernandes', role: 'Co-PI', institution: 'CSIR-CECRI' }, { name: 'Prof. L. Weber', role: 'Collaborator', institution: 'KIT, Germany' }], amountRequested: '15000000', durationMonths: '36', status: 'Drafting proposal', targetSubmit: D(18), conceptNote: 'Hierarchical porous carbons as capacitive cathodes paired with hard-carbon anodes in Na-ion hybrid capacitors (sample entry).', objectives: '1. Templated carbon synthesis\n2. Anion intercalation mechanism\n3. Pouch-cell prototype' }));
+  out.projects.push(mk({ title: 'Recycling MnO2 from spent zinc–carbon cells', agency: 'DST', scheme: 'Materials for Energy Storage', callId: call2.id, role: 'PI', pi: me, status: 'Concept note', conceptNote: 'Recover MnO2 from discarded dry cells and reuse it as a pseudocapacitive electrode.' }));
+  out.projects.push(mk({ title: 'MnO2 supercapacitors from battery waste', agency: 'DST', scheme: 'TDP', role: 'Co-PI', pi: 'Dr. R. Menon (KARE)', amount: '1850000', status: 'Ongoing', start: D(-500), end: D(230), nextReportDue: D(55), progress: '60', milestones: [{ text: 'Prototype device', due: D(100), done: false }] }));
+  out.projects.push(mk({ title: 'Biomass carbons for aqueous supercapacitors', agency: 'SERB', scheme: 'SRG', role: 'PI', pi: me, amountRequested: '2800000', status: 'Rejected', submitted: D(-400) }));
   out.responsibilities.push(mk({ title: 'Materials Lab in-charge', role: 'In-charge', level: 'Department', since: D(-700), status: 'Active', duties: 'Stock register monthly; chemical inventory; AMC follow-up for glovebox', paperwork: [{ text: 'Annual stock verification report', due: D(-40), done: true }, { text: 'Glovebox AMC renewal file to purchase dept', due: D(8), done: false }, { text: 'Chemical inventory update (Sep)', due: D(-2), done: false }], docs: [{ label: 'Stock register 2026–27', url: 'https://docs.google.com/spreadsheets/d/EXAMPLE' }, { label: 'AMC quotation', url: 'https://1drv.ms/b/s!EXAMPLE' }] }));
   out.responsibilities.push(mk({ title: 'Class teacher — II M.Sc. Physics A', role: 'Class teacher', level: 'Department', since: D(-75), status: 'Active' }));
   out.responsibilities.push(mk({ title: 'NAAC Criterion III data coordinator', role: 'Coordinator', level: 'School', since: D(-300), status: 'Active', paperwork: [{ text: 'Criterion 3.3 publication data sheet', due: D(10), done: false }], docs: [{ label: 'AQAR 2025–26 folder', url: 'https://drive.google.com/drive/folders/EXAMPLE' }] }));
@@ -2862,11 +3210,14 @@ function buildSample(){
   out.actions.push(mk({ title: 'Send Criterion III publication list to IQAC', due: D(-3), priority: 'High', status: 'Open', source: 'IQAC monthly review' }));
   out.actions.push(mk({ title: 'Draft revised PHY231 syllabus for BoS', due: D(12), priority: 'Medium', status: 'In progress', source: 'BoS' }));
   out.actions.push(mk({ title: 'Raise purchase request for argon cylinders', due: D(1), priority: 'High', status: 'Open', source: 'Materials Lab in-charge' }));
-  out.actions.push(mk({ title: 'Upload CIA-1 marks', due: D(-24), priority: 'High', status: 'Done', source: 'Exams' }));
+  out.actions.push(mk({ title: 'Upload CIA-1 marks', due: D(-24), priority: 'High', status: 'Done', doneOn: D(-25), source: 'Exams', category: 'Exams' }));
+  out.actions.push(mk({ title: 'Submit lab safety audit form', due: D(-60), priority: 'Medium', status: 'Done', doneOn: D(-61), source: 'Materials Lab in-charge', category: 'Administration', archived: true, archivedOn: D(-30) }));
   out.reminders.push(mk({ title: 'Update chemical stock register', date: D(-30), repeat: 'Monthly', category: 'Administration', lead: '2' }));
   out.reminders.push(mk({ title: 'Submit monthly attendance report', date: WD.addDays(T.slice(0, 8) + '01', 26), repeat: 'Monthly', category: 'Teaching', lead: '3' }));
   out.reminders.push(mk({ title: 'Renew ACS membership', date: D(20), repeat: 'Yearly', category: 'Research', lead: '14' }));
   out.reminders.push(mk({ title: 'Collect DAAD application documents', date: D(2), repeat: 'None', category: 'Research' }));
+  out.reminders.push(mk({ title: 'Pay conference registration fee', date: D(-8), repeat: 'None', category: 'Research', done: true, doneOn: D(-9), history: [{ occurrence: D(-8), on: D(-9) }] }));
+  out.reminders.push(mk({ title: 'Send NAAC data to coordinator', date: D(-3), repeat: 'None', category: 'Administration' }));
   return out;
 }
 const loadSample = guard(async () => {
@@ -2901,7 +3252,9 @@ const RS = {
   collaborations:  { label:'Collaborations', date:r => r.since, title:r => r.name, status:r => r.status, detail:r => [r.institution, r.country, r.kind, r.area, r.outcomes].filter(Boolean).join(' · '), active:true },
   contacts:        { label:'Researcher contacts', date:() => '', title:r => r.name, status:r => r.relation, detail:r => [r.designation, r.institution, r.expertise].filter(Boolean).join(' · ') },
   metrics:         { label:'Metrics history', date:r => r.date, title:r => r.source, status:() => '', detail:r => `Documents ${r.documents || '–'} · Citations ${r.citations || '–'} · h-index ${r.hIndex || '–'} · i10 ${r.i10 || '–'}` },
-  projects:        { label:'Projects & grants', date:r => r.start || r.submitted, end:r => r.end, title:r => r.title, status:r => r.status, detail:r => [r.agency, r.scheme, r.role, r.amount ? money(r.amount) : '', (r.progress ? r.progress + '% done' : '')].filter(Boolean).join(' · ') },
+  projects:        { label:'Projects & grants', date:r => r.start || r.submitted || r.targetSubmit, end:r => r.end, title:r => r.title, status:r => (PROJECT_GROUPS[projectGroup(r)] || {}).label + ' — ' + r.status, detail:r => [r.agency, r.scheme, 'PI: ' + (r.pi || (r.role === 'PI' ? 'self' : '—')), (r.team || []).length ? 'Team: ' + r.team.map(x => x.name + (x.role ? ' (' + x.role + ')' : '')).join(', ') : '', r.amount ? money(r.amount) + ' sanctioned' : r.amountRequested ? money(r.amountRequested) + ' requested' : '', (r.progress ? r.progress + '% done' : '')].filter(Boolean).join(' · ') },
+  fundingCalls:    { label:'Funding calls', date:r => r.lastDate || r.opens || r.announced, title:r => [r.agency, r.title].filter(Boolean).join(' — '), status:r => r.status || 'Watching', detail:r => [r.opens && 'opens ' + fdate(r.opens), r.lastDate && 'last date ' + fdate(r.lastDate), r.submittedOn && 'submitted ' + fdate(r.submittedOn), r.amount && 'up to ' + money(r.amount)].filter(Boolean).join(' · ') },
+  events:          { label:'Events', date:r => r.start, title:r => r.title, status:r => r.status, detail:r => [r.category, r.role, r.organiser, r.venue, r.end && r.end !== r.start ? 'till ' + fdate(r.end) : '', r.outcome].filter(Boolean).join(' · ') },
   responsibilities:{ label:'Responsibilities & in-charges', date:r => r.since, end:r => r.until, title:r => r.title, status:r => r.status, detail:r => { const p = r.paperwork || []; return [r.role, r.level, p.length ? p.filter(x => x.done).length + '/' + p.length + ' paperwork done' : ''].filter(Boolean).join(' · '); } },
   committees:      { label:'Committees', date:() => '', title:r => r.name, status:r => r.status, detail:r => [r.role, r.level, r.frequency].filter(Boolean).join(' · ') },
   meetings:        { label:'Meetings', date:r => r.date, title:r => WD.meetingTitle(state.data, r), status:r => r.status, detail:r => [r.with, r.minutes || r.agenda].filter(Boolean).join(' · ') },
@@ -2911,7 +3264,7 @@ const RS = {
   holidays:        { label:'Holidays', date:r => r.date, title:r => r.name, status:() => '', detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
   courses:         { label:'Courses', date:() => '', title:r => courseName(r.id), status:r => r.kind, detail:r => [r.classLabel, r.credits && r.credits + ' credits', (WD.byId(state.data, 'semesters', r.semesterId) || {}).name].filter(Boolean).join(' · ') }
 };
-const PERIOD_ORDER = [['Teaching', ['diary','extraClasses']], ['Examinations', ['examDuties','evaluations']], ['Mentoring', ['mentorMeetings']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Projects & grants', ['projects']], ['Administration', ['responsibilities','meetings','actions']]];
+const PERIOD_ORDER = [['Teaching', ['diary','extraClasses']], ['Examinations', ['examDuties','evaluations']], ['Mentoring', ['mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
 function unitTitle(r){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(r.unit)); return u ? u.title : ''; }
 function menteeNames(r){ const n = (r.menteeIds || []).map(id => (WD.byId(state.data, 'mentees', id) || {}).name).filter(Boolean); return n.length > 4 ? n.length + ' mentees' : n.join(', '); }
 function inPeriod(cfg, r, from, to){
