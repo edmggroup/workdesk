@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-02-8">
-<meta name="app-version" content="1.8">
+<meta name="app-build" content="2026-11-02-9">
+<meta name="app-version" content="1.9">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -554,6 +554,10 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .tli .rt{flex-wrap:wrap;justify-content:flex-end;max-width:55%}
 @media (max-width:560px){.tli .rt .links .lk{font-size:11px;padding:2px 7px}.tli .rt{max-width:48%}}
 
+:root{--c-achievement:#9C4F96;--c-achievement-w:#F6E9F5}
+:root[data-theme="dark"]{--c-achievement:#E3A3DD;--c-achievement-w:#33213A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-achievement:#E3A3DD;--c-achievement-w:#33213A}}
+
 </style>
 </head>
 <body>
@@ -626,7 +630,7 @@ var WD = (function () {
     'plans', 'publications', 'collaborations', 'conferences', 'reviews', 'contacts', 'metrics',
     'projects',
     'responsibilities', 'committees', 'meetings', 'actions', 'reminders',
-    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments'
+    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements'
   ];
 
   /* Reminder categories: label, default lead time (days before), default on. */
@@ -648,6 +652,7 @@ var WD = (function () {
     event:       { label: 'Events (FDPs, institutional, in-charge, research, teaching…)', lead: 7, on: true },
     funding:     { label: 'Funding calls — opening, last date, planned submission', lead: 14, on: true },
     classteacher:{ label: 'Class-teacher follow-ups', lead: 1, on: true },
+    achievement: { label: 'Courses & certificates — course exam / end date, certificate to download, renewal', lead: 7, on: true },
     leave:       { label: 'Leave & OD — leave starting, OD not yet applied for outside-campus events', lead: 7, on: true },
     minutes:     { label: 'Minutes / session records pending after a meeting or recurring event', lead: 0, on: true },
     outside:     { label: 'Outside-campus events — alert at least this many days before (OD / travel)', lead: 3, on: true }
@@ -1098,6 +1103,17 @@ var WD = (function () {
       (e.tasks || []).forEach(function (m, i) { if (!m.done) push('event', m.due, '', m.text, 'Event: ' + e.title, { coll: 'events', id: e.id, sub: i }, true); });
     });
     // leave & OD
+    // courses being taken (NPTEL / MOOC / certification), certificates still to collect, renewals
+    list(data, 'achievements').forEach(function (a) {
+      var nm = a.title || 'Course / certificate', ref = { coll: 'achievements', id: a.id };
+      if (['Enrolled', 'In progress', 'Exam registered'].indexOf(a.status) !== -1) {
+        if (validDate(a.deadline) && a.deadline >= (a.start || '')) push('achievement', a.deadline, '', 'Assignment / registration due: ' + nm, a.issuer || '', ref, true);
+        push('achievement', a.examDate, a.examTime || '', 'Exam: ' + nm, [a.issuer, a.examCentre].filter(Boolean).join(' · '), ref, false);
+        push('achievement', a.end, '', 'Course ends: ' + nm, a.issuer || '', ref, false);
+      }
+      if (a.status === 'Certificate awaited' && validDate(a.certExpected)) push('achievement', a.certExpected, '', 'Certificate due — download & upload: ' + nm, a.issuer || '', ref, true);
+      if (validDate(a.validUntil) && ['Expired'].indexOf(a.status) === -1) push('achievement', addDays(a.validUntil, -30), '', 'Renewal due (valid till ' + a.validUntil + '): ' + nm, a.issuer || '', ref, false);
+    });
     list(data, 'leaves').forEach(function (l) {
       if (['Cancelled', 'Rejected'].indexOf(l.status) !== -1) return;
       var lab = (l.type || 'Leave') + (l.to && l.to !== l.from ? ' (till ' + short(l.to) + ')' : '');
@@ -1197,15 +1213,17 @@ var WD = (function () {
    =================================================================== */
 const STATUS_TONE = {
   // green
-  'Completed':'ok','Published':'ok','Accepted':'ok','Held':'ok','Done':'ok','Conducted':'ok','Submitted (review)':'ok','Active':'ok','Ongoing':'ok','Sanctioned':'ok','Attended':'ok','Presented':'ok',
+  'Completed':'ok','Published':'ok','Accepted':'ok','Held':'ok','Done':'ok','Conducted':'ok','Submitted (review)':'ok','Active':'ok','Ongoing':'ok','Sanctioned':'ok','Attended':'ok','Presented':'ok','Certificate received':'ok','Awarded':'ok',
   // amber
-  'Scheduled':'warn','Assigned':'warn','In progress':'warn','Under review':'warn','Revision requested':'warn','Major revision':'warn','Minor revision':'warn','Submitted':'warn','Open':'warn','Invited':'warn','Planned':'warn','Registered':'warn','Proposed':'warn','Drafting':'warn','Received':'warn',
+  'Scheduled':'warn','Assigned':'warn','In progress':'warn','Under review':'warn','Revision requested':'warn','Major revision':'warn','Minor revision':'warn','Submitted':'warn','Open':'warn','Invited':'warn','Planned':'warn','Registered':'warn','Proposed':'warn','Drafting':'warn','Received':'warn','Enrolled':'warn','Exam registered':'warn','Certificate awaited':'warn','Nominated / applied':'warn',
   // red
-  'Rejected':'bad','Cancelled':'bad','Declined':'bad','Dropped':'bad','Not conducted':'bad','Overdue':'bad',
+  'Rejected':'bad','Cancelled':'bad','Declined':'bad','Dropped':'bad','Not conducted':'bad','Expired':'bad','Overdue':'bad',
   // neutral
   'Idea':'muted','Closed':'muted','Inactive':'muted','Not attending':'muted','On hold':'muted'
 };
 
+const ACH_KINDS = ['Course completion (MOOC / NPTEL / SWAYAM)','FDP / training certificate','Workshop / conference participation','Professional certification','Award / honour','Best paper / poster award','Recognition / appreciation','Fellowship / membership','Patent / copyright / design','Invited talk / resource person','Student achievement (guided by me)','Other'];
+const ACH_STATUSES = ['Enrolled','In progress','Exam registered','Certificate awaited','Certificate received','Awarded','Nominated / applied','Expired','Dropped'];
 const DAY_OPTIONS = () => state.settings.timetable.mode === 'dayorder'
   ? Array.from({length: +state.settings.timetable.dayOrders || 6}, (_, i) => 'D' + (i + 1))
   : ['Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1416,6 +1434,32 @@ const SCHEMA = {
       {k:'notes', label:'Notes', type:'textarea', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['from','to','type','leaveDays','reason','linkName','status'], sort:['from','desc'] },
+
+  achievements: { label:'Achievements & certificates', one:'achievement / certificate',
+    fields:[
+      {k:'title', label:'Title', type:'text', req:true, full:true, ph:'NPTEL — Electrochemical Energy Storage (Elite + Silver) · Best Paper Award, ICEM 2026'},
+      {k:'kind', label:'Type', type:'select', opts:()=>ACH_KINDS, def:'Course completion (MOOC / NPTEL / SWAYAM)'},
+      {k:'status', label:'Status', type:'select', opts:ACH_STATUSES, def:'Certificate received'},
+      {k:'issuer', label:'Issued by / platform', type:'text', ph:'NPTEL – IIT Madras, Coursera, AICTE ATAL, IEEE, CHRIST'},
+      {k:'level', label:'Level', type:'select', opts:['','Institutional','University','State','National','International'], def:''},
+      {k:'date', label:'Date awarded / completed', type:'date'},
+      {k:'start', label:'Course start', type:'date'},
+      {k:'end', label:'Course end', type:'date'},
+      {k:'deadline', label:'Next assignment / registration deadline', type:'date'},
+      {k:'examDate', label:'Exam date', type:'date'},
+      {k:'examTime', label:'Exam time', type:'time'},
+      {k:'examCentre', label:'Exam centre', type:'text'},
+      {k:'duration', label:'Duration', type:'text', ph:'12 weeks · 30 hours · 5 days'},
+      {k:'credits', label:'Credits', type:'text'},
+      {k:'grade', label:'Score / grade', type:'text', ph:'82% · Elite + Silver · A+'},
+      {k:'certExpected', label:'Certificate expected by', type:'date'},
+      {k:'certNo', label:'Certificate / award no.', type:'text'},
+      {k:'validUntil', label:'Valid until (for renewals)', type:'date'},
+      {k:'link', label:'Connected to (event, project, course…)', type:'parent', full:true},
+      {k:'certLink', label:'Certificate / verification link', type:'url', full:true},
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true},
+      {k:'notes', label:'Notes', type:'textarea', full:true}
+    ], cols:['achWhen','title','achKind','issuer','grade','certState','status'], sort:['date','desc'] },
 
   assessments: { label:'Marks', one:'assessment',
     fields:[
@@ -1726,7 +1770,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -1788,7 +1832,7 @@ function toast(msg, bad, action){
 }
 function chip(status){ if(!status) return ''; return `<span class="chip ${STATUS_TONE[status] || ''}">${esc(status)}</span>`; }
 function catDot(c){ return `<span class="cat" style="color:var(--c-${c})"><i style="background:var(--c-${c})"></i>${esc(CAT_SHORT[c] || c)}</span>`; }
-const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending' };
+const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending', achievement:'Course / certificate' };
 function bar(pct, tone){ pct = Math.max(0, Math.min(100, pct || 0)); return `<div class="bar ${tone || ''}"><i style="width:${pct}%"></i></div>`; }
 async function sha(s){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -2167,9 +2211,10 @@ const NAV = [
   { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
   { g:'Projects & funding', items:[['projects','Projects & grants'],['fundingCalls','Funding calls']] },
   { g:'Administration', items:[['responsibilities','Responsibilities'],['meetings','Meetings'],['committees','Committees'],['leaves','Leave & OD']] },
+  { g:'Profile', items:[['achievements','Achievements']] },
   ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
 const NAV_ICON = {
   dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
   calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
@@ -2463,13 +2508,22 @@ const FORM_EXTRAS = {
   leaves: rec => '',
   fundingCalls: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="projectFromCall('${rec.id}')">+ Start a proposal for this call</button>` : '',
   projects: rec => rec.callId && WD.byId(state.data, 'fundingCalls', rec.callId) ? `<button type="button" class="btn ghost sm" onclick="closeModal();editRecord('fundingCalls','${rec.callId}')">Open funding call</button>` : '',
-  events: rec => (rec.id && rec.location === 'Outside campus' ? `<button type="button" class="btn ghost sm" onclick="applyOdFor('events','${rec.id}')">Record OD</button>` : '') + (rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('Event: ${esc(rec.title || '').replace(/'/g, '&#39;')}', 'events:${rec.id}')">+ Action item</button>` : ''),
+  events: rec => (rec.id && rec.location === 'Outside campus' ? `<button type="button" class="btn ghost sm" onclick="applyOdFor('events','${rec.id}')">Record OD</button>` : '') + (rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('Event: ${esc(rec.title || '').replace(/'/g, '&#39;')}', 'events:${rec.id}')">+ Action item</button>` : '') + (rec.id && ['Completed','Attended','Conducted'].includes(rec.status) || (rec.id && rec.end && rec.end < today()) ? `<button type="button" class="btn ghost sm" onclick="certificateFrom('events','${rec.id}')">+ Certificate</button>` : ''),
+  achievements: rec => rec.certLink ? `<a class="btn ghost sm" href="${esc(rec.certLink)}" target="_blank" rel="noopener">Open certificate ↗</a>` : '',
+  conferences: rec => rec.id && ['Attended','Presented'].includes(rec.status) ? `<button type="button" class="btn ghost sm" onclick="certificateFrom('conferences','${rec.id}')">+ Certificate</button>` : '',
   extraClasses: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="logSessionFromExtra('${rec.id}')">Log in diary</button>` : ''
 };
 function projectFromCall(id){
   const f = WD.byId(state.data, 'fundingCalls', id); if(!f) return; closeModal();
   if(['Watching'].includes(f.status || 'Watching')) store.upsert('fundingCalls', Object.assign({}, f, { status: 'Preparing' }));
   editRecord('projects', null, { title: '', status: 'Concept note', callId: f.id, agency: f.agency || '', scheme: f.title || '', role: 'PI', pi: state.settings.profile.name || '', targetSubmit: f.targetSubmit || (WD.validDate(f.lastDate) ? WD.addDays(f.lastDate, -3) : '') });
+}
+/* Record the certificate / award that came out of an event or conference, already filled in. */
+function certificateFrom(coll, id){
+  const r = WD.byId(state.data, coll, id); if(!r) return; closeModal();
+  const role = r.role || '', isTalk = /Resource|Invited|Keynote|Speaker|Judge|Chair/i.test(role);
+  const kind = isTalk ? 'Invited talk / resource person' : /FDP|training/i.test((r.category || '') + ' ' + (r.kind || '')) ? 'FDP / training certificate' : 'Workshop / conference participation';
+  editRecord('achievements', null, { title: (isTalk ? role + ' — ' : '') + (r.title || ''), kind, status: 'Certificate received', issuer: r.organiser || '', date: r.end || r.start || today(), start: r.start || '', end: r.end || '', link: coll === 'events' ? 'events:' + id : '', certLink: coll === 'conferences' && /certificate/i.test(r.link || '') ? r.link : '', notes: coll === 'conferences' ? 'From conference record: ' + (r.title || '') : '' });
 }
 function addActionFrom(src, link){ closeModal(); editRecord('actions', null, { source: src, link: link || '', due: today() }); }
 
@@ -2614,6 +2668,9 @@ const clearBrokenLinks = guard(async () => {
 
 /* ============================ GENERIC LIST ============================ */
 const VIRTUAL = {
+  achWhen: (coll, r) => { const d = r.date || r.end; return d ? fdate(d) + (!r.date && r.end ? ' <span class="faint">(ends)</span>' : '') : '<span class="faint">—</span>'; },
+  achKind: (coll, r) => esc(String(r.kind || '').replace(/\s*\(.*\)$/, '')),
+  certState: (coll, r) => { const has = r.certLink || (r.docs || []).length; if(has) return '<span class="chip ok">On file</span>'; if(['Enrolled','In progress','Exam registered','Nominated / applied','Dropped'].includes(r.status)) return '<span class="faint">—</span>'; return '<span class="chip warn">Add copy</span>'; },
   progress: (coll, r) => {
     if(coll === 'evaluations'){ const t = +r.scripts || 0, d = +r.done || 0; return t ? `<div style="min-width:110px">${bar(d / t * 100, d >= t ? 'ok' : (r.due < today() ? 'bad' : ''))}<div class="faint" style="font-size:11.5px;margin-top:3px">${d}/${t}</div></div>` : ''; }
     if(coll === 'plans'){ const m = r.milestones || []; const d = m.filter(x => x.done).length; return m.length ? `<div style="min-width:100px">${bar(d / m.length * 100, 'ok')}<div class="faint" style="font-size:11.5px;margin-top:3px">${d}/${m.length} milestones</div></div>` : ''; }
@@ -2651,7 +2708,7 @@ const VIRTUAL = {
   next: (coll, r) => { const d = WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : today()); return d ? `${fdate(d, 'dow')}${r.time ? ' ' + ftime(r.time) : ''}` : ''; },
   done: (coll, r) => (r.repeat || 'None') === 'None' ? (r.done ? chip('Done') : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')">Mark done</button>`) : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')" title="Skip to the next occurrence">Done for this time</button>`
 };
-const VIRTUAL_LABEL = { minutesState:'Minutes', leaveDays:'Days', marksDone:'Marks', courseLinks:'Links', linkName:'Linked to', linkedSum:'Connected items', classStrength:'Students', lastFollow:'Last follow-up', studentsNamed:'Students', rowActs:'', remState:'State', projectMoney:'Amount', keyDate:'Key date', callStage:'Next step', filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
+const VIRTUAL_LABEL = { certState:'Certificate', achWhen:'Date', achKind:'Type', minutesState:'Minutes', leaveDays:'Days', marksDone:'Marks', courseLinks:'Links', linkName:'Linked to', linkedSum:'Connected items', classStrength:'Students', lastFollow:'Last follow-up', studentsNamed:'Students', rowActs:'', remState:'State', projectMoney:'Amount', keyDate:'Key date', callStage:'Next step', filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
 function lastMetDate(menteeId){ let d = null; state.data.mentorMeetings.forEach(m => { if(m.status === 'Held' && (m.menteeIds || []).includes(menteeId) && (!d || m.date > d)) d = m.date; }); return d; }
 
 function cellHtml(coll, k, r){
@@ -2697,6 +2754,8 @@ function filteredRows(coll, extraFilter){
   rows.sort((a, b) => {
     let x = a[sk], y = b[sk];
     if(sk === 'day'){ x = dayIdx(x) * 10000 + (WD.minutes(a.start) || 0); y = dayIdx(y) * 10000 + (WD.minutes(b.start) || 0); }
+    else if(coll === 'achievements' && (sk === 'date' || sk === 'achWhen')){ x = a.date || a.end; y = b.date || b.end; }
+    else if(coll === 'achievements' && sk === 'achKind'){ x = a.kind; y = b.kind; }
     else if(coll === 'diary' && sk === 'date'){ x = (x || '') + (a.start || ''); y = (y || '') + (b.start || ''); }
     if(x == null || x === '') return 1; if(y == null || y === '') return -1;
     if(!isNaN(+x) && !isNaN(+y) && x !== '' && typeof x !== 'boolean' && !WD.validDate(String(x))) { x = +x; y = +y; }
@@ -2777,7 +2836,7 @@ function runSearch(q){
 document.addEventListener('click', e => { const p = $('#searchPanel'); if(p && !e.target.closest('.search')) p.classList.remove('open'); const m = $('#qaMenu'); if(m && !e.target.closest('#qaWrap')) m.remove(); });
 
 /* ============================ QUICK ADD ============================ */
-const QUICK = [['leaves','Leave / OD'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
+const QUICK = [['leaves','Leave / OD'],['achievements','Achievement / certificate'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
 function toggleQuickBottom(){
   const m = $('#qaBottom'); if(m) return m.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="menu qa-bottom" id="qaBottom">${QUICK.map(([c, l]) => `<button onclick="$('#qaBottom').remove();editRecord('${c}', null, ${['diary','reminders','holidays','schedule','meetings','classLog'].includes(c) ? `{date:'${today()}'}` : c === 'actions' ? `{due:'${today()}'}` : c === 'leaves' ? `{from:'${today()}'}` : c === 'events' ? `{start:'${today()}'}` : 'null'})">${esc(l)}</button>`).join('')}</div>`);
@@ -3326,6 +3385,31 @@ VIEWS.publications = () => {
 };
 VIEWS.collaborations = () => pageHead('Collaborations', 'Internal, national, international and industry collaborations') + listTable('collaborations');
 VIEWS.conferences = () => pageHead('Conferences & workshops', 'Attended, presented, invited talks, organised — abstract and registration deadlines are reminded') + listTable('conferences');
+/* Achievements & certificates: one place for every certificate, course completion and award — ready for appraisal, NAAC/NIRF and CV updates. */
+VIEWS.achievements = () => {
+  const A = state.data.achievements, t = today(), yr = t.slice(0, 4);
+  const going = A.filter(a => ['Enrolled','In progress','Exam registered'].includes(a.status));
+  const awaited = A.filter(a => a.status === 'Certificate awaited');
+  const noCopy = A.filter(a => ['Certificate received','Awarded'].includes(a.status) && !a.certLink && !(a.docs || []).length);
+  const renew = A.filter(a => WD.validDate(a.validUntil) && a.status !== 'Expired' && a.validUntil <= WD.addDays(t, 60));
+  const thisYear = A.filter(a => ['Certificate received','Awarded','Certificate awaited'].includes(a.status) && (a.date || a.end || '').slice(0, 4) === yr);
+  const tb = tabs('achievements', [['all','All'],['courses','Courses & certifications'],['awards','Awards & recognition'],['progress','In progress' + (going.length ? ' (' + going.length + ')' : '')],['todo','To do' + (awaited.length + noCopy.length + renew.length ? ' (' + (awaited.length + noCopy.length + renew.length) + ')' : '')]]);
+  const COURSE = ['Course completion (MOOC / NPTEL / SWAYAM)','FDP / training certificate','Workshop / conference participation','Professional certification'];
+  const AWARD = ['Award / honour','Best paper / poster award','Recognition / appreciation','Fellowship / membership','Patent / copyright / design','Invited talk / resource person','Student achievement (guided by me)'];
+  const kinds = {}; thisYear.forEach(a => kinds[a.kind || 'Other'] = (kinds[a.kind || 'Other'] || 0) + 1);
+  const sum = A.length ? `<div class="muted" style="font-size:13px;margin:-6px 0 12px">${yr}: <b>${thisYear.length}</b> completed / received${Object.keys(kinds).length ? ' — ' + Object.keys(kinds).map(k => `${esc(k.replace(/\s*\(.*\)$/, ''))} <b>${kinds[k]}</b>`).join(' · ') : ''}${going.length ? ` · <b>${going.length}</b> in progress` : ''}</div>` : '';
+  const row = (a, why) => `<div class="tli click" onclick="editRecord('achievements','${a.id}')"><div class="tm">${a.date || a.end ? fdate(a.date || a.end, 'short') : ''}</div><div class="bd">${catDot('achievement')}<div class="tt">${esc(a.title)}</div><div class="dt">${esc([a.issuer, why].filter(Boolean).join(' · '))}</div></div><div class="rt">${chip(a.status)}</div></div>`;
+  let body;
+  if(tb.cur === 'courses') body = listTable('achievements', { filter: a => COURSE.includes(a.kind), preset: { kind: COURSE[0] } });
+  else if(tb.cur === 'awards') body = listTable('achievements', { filter: a => AWARD.includes(a.kind), preset: { kind: 'Award / honour', status: 'Awarded' } });
+  else if(tb.cur === 'progress') body = going.length ? `<div class="card"><div class="tl">${going.sort((a, b) => (a.examDate || a.end || '9') < (b.examDate || b.end || '9') ? -1 : 1).map(a => row(a, [a.examDate && 'Exam ' + fdate(a.examDate), a.end && 'ends ' + fdate(a.end), a.duration].filter(Boolean).join(' · '))).join('')}</div></div>` : `<div class="card empty"><b>No course in progress</b>Enrolled in an NPTEL / SWAYAM / Coursera course or a certification? Add it with its exam and end dates — you will be reminded.<div style="margin-top:12px"><button class="btn sm" onclick="editRecord('achievements', null, {status:'Enrolled', kind:'Course completion (MOOC / NPTEL / SWAYAM)', start:'${t}'})">+ Add course</button></div></div>`;
+  else if(tb.cur === 'todo') {
+    const blk = (h, list, why) => `<div class="card"><h3>${h}</h3>${list.length ? `<div class="tl">${list.map(a => row(a, why(a))).join('')}</div>` : '<div class="empty" style="padding:10px">Nothing here.</div>'}</div>`;
+    body = `<div class="grid g2">${blk('Certificates awaited', awaited, a => a.certExpected ? 'expected ' + fdate(a.certExpected) : 'download when released')}${blk('Certificate copy not attached', noCopy, () => 'add the Drive / OneDrive link or upload the file')}${blk('Renewals in the next 60 days', renew, a => 'valid till ' + fdate(a.validUntil))}</div>`;
+  }
+  else body = listTable('achievements', { emptyHint: 'Course completions (NPTEL, SWAYAM, Coursera), FDP and workshop certificates, professional certifications, awards, best-paper awards, recognitions, memberships, patents and invited talks — each with the certificate link, ready for appraisal and NAAC files.' });
+  return pageHead('Achievements & certificates', 'Courses completed, certificates, awards and recognitions — with the certificate copy on file') + tb.html + sum + body;
+};
 VIEWS.reviews = () => {
   const yr = today().slice(0, 4);
   const done = state.data.reviews.filter(r => r.status === 'Submitted' && (r.due || r.invited || '').slice(0, 4) === yr).length;
@@ -3343,7 +3427,7 @@ VIEWS.researcher = () => {
     body = `<div class="grid g2"><div class="card"><h3>Identifiers & profiles</h3><form id="ridForm" class="fg">${RID.map(([k, l, pre]) => `<div class="${k === 'areas' ? 'full' : ''}"><label class="f">${l}${link(k, pre)}</label><input class="inp" name="${k}" value="${esc(r[k] || '')}"></div>`).join('')}<div class="full"><button class="btn" type="submit">Save profile</button></div></form></div>
       <div class="grid" style="align-content:start"><div class="card"><h3>Latest metrics<span class="r"><button class="linkbtn" onclick="editRecord('metrics',null,{date:'${today()}'})">+ Record today’s numbers</button></span></h3>
       ${mt.length ? `<div class="tw"><table class="t"><thead><tr><th>Source</th><th>As on</th><th>Docs</th><th>Citations</th><th>h</th><th>i10</th></tr></thead><tbody>${mt.map(([s, m]) => `<tr onclick="editRecord('metrics','${m.id}')"><td><b style="font-weight:600">${s}</b></td><td>${fdate(m.date)}</td><td>${esc(m.documents || '')}</td><td>${esc(m.citations || '')}</td><td>${esc(m.hIndex || '')}</td><td>${esc(m.i10 || '')}</td></tr>`).join('')}</tbody></table></div>${sparkline()}` : '<div class="muted" style="font-size:13.5px">Record your h-index and citations now and then — the history builds a trend line here (useful for appraisals and proposals).</div>'}</div>
-      <div class="card"><h3>From this app</h3><dl class="kv"><dt>Publications</dt><dd>${state.data.publications.filter(p => p.status === 'Published').length} published · ${state.data.publications.filter(p => ['Submitted','Under review','Revision requested','Accepted'].includes(p.status)).length} in pipeline</dd><dt>Projects</dt><dd>${state.data.projects.filter(p => ['Sanctioned','Ongoing','Completed'].includes(p.status)).length} funded · ${money(state.data.projects.filter(p => ['Sanctioned','Ongoing','Completed'].includes(p.status)).reduce((a, p) => a + (+p.amount || 0), 0)) || '₹0'} total</dd><dt>Collaborations</dt><dd>${state.data.collaborations.length}</dd><dt>Talks & events</dt><dd>${state.data.conferences.filter(c => ['Attended','Presented'].includes(c.status)).length}</dd><dt>Reviews</dt><dd>${state.data.reviews.filter(r => r.status === 'Submitted').length} submitted</dd></dl></div></div></div>`;
+      <div class="card"><h3>From this app</h3><dl class="kv"><dt>Publications</dt><dd>${state.data.publications.filter(p => p.status === 'Published').length} published · ${state.data.publications.filter(p => ['Submitted','Under review','Revision requested','Accepted'].includes(p.status)).length} in pipeline</dd><dt>Projects</dt><dd>${state.data.projects.filter(p => ['Sanctioned','Ongoing','Completed'].includes(p.status)).length} funded · ${money(state.data.projects.filter(p => ['Sanctioned','Ongoing','Completed'].includes(p.status)).reduce((a, p) => a + (+p.amount || 0), 0)) || '₹0'} total</dd><dt>Collaborations</dt><dd>${state.data.collaborations.length}</dd><dt>Talks & events</dt><dd>${state.data.conferences.filter(c => ['Attended','Presented'].includes(c.status)).length}</dd><dt>Reviews</dt><dd>${state.data.reviews.filter(r => r.status === 'Submitted').length} submitted</dd><dt>Awards & certificates</dt><dd>${state.data.achievements.filter(a => ['Award / honour','Best paper / poster award','Recognition / appreciation','Fellowship / membership'].includes(a.kind) && a.status === 'Awarded').length} awards · ${state.data.achievements.filter(a => a.status === 'Certificate received').length} certificates</dd></dl></div></div></div>`;
   } else if(tb.cur === 'metrics') body = listTable('metrics', { preset: { date: today() } });
   else body = listTable('contacts', { emptyHint: '<div>People you may collaborate with, invite as resource persons, or suggest as reviewers/examiners.</div>' });
   return pageHead("Researcher database", 'Your research identity, metrics over time, and a contact book of researchers') + tb.html + body;
@@ -3839,6 +3923,11 @@ function buildSample(){
   out.reminders.push(mk({ title: 'Pay conference registration fee', date: D(-8), repeat: 'None', category: 'Research', done: true, doneOn: D(-9), history: [{ occurrence: D(-8), on: D(-9) }] }));
   out.reminders.push(mk({ title: 'Send NAAC data to coordinator', date: D(-3), repeat: 'None', category: 'Administration' }));
   // leave & OD, marks, recurring meeting, mentee ↔ student
+  out.achievements.push(mk({ title: 'NPTEL — Electrochemical Energy Storage', kind: 'Course completion (MOOC / NPTEL / SWAYAM)', status: 'Exam registered', issuer: 'NPTEL – IIT Madras', start: D(-70), end: D(12), examDate: D(26), examTime: '09:00', examCentre: 'Bengaluru', duration: '12 weeks', credits: '3', deadline: D(4), level: 'National' }));
+  out.achievements.push(mk({ title: 'Coursera — Machine Learning for Materials Science', kind: 'Course completion (MOOC / NPTEL / SWAYAM)', status: 'Certificate received', issuer: 'Coursera', date: D(-120), duration: '6 weeks', grade: '94%', certLink: 'https://coursera.org/verify/EXAMPLE123', level: 'International' }));
+  out.achievements.push(mk({ title: 'FDP on Electrochemical Impedance Spectroscopy', kind: 'FDP / training certificate', status: 'Certificate awaited', issuer: 'NIT Karnataka', date: D(-41), duration: '5 days', certExpected: D(3) }));
+  out.achievements.push(mk({ title: 'Best Oral Presentation Award — National Conference on Advanced Materials', kind: 'Best paper / poster award', status: 'Awarded', issuer: 'Anna University', date: D(-200), level: 'National' }));
+  out.achievements.push(mk({ title: 'Life Member — Materials Research Society of India', kind: 'Fellowship / membership', status: 'Awarded', issuer: 'MRSI', date: D(-400), certNo: 'LM-2025-1187', certLink: 'https://drive.google.com/example' }));
   out.leaves.push(mk({ type: 'Casual leave', status: 'Approved', from: D(-16), to: D(-16), reason: 'Personal work', appliedOn: D(-20) }));
   out.leaves.push(mk({ type: 'Duty leave / OD', status: 'Approved', from: D(-40), to: D(-38), reason: 'FDP on EIS (online, during class hours)' }));
   out.leaves.push(mk({ type: 'Casual leave', status: 'Applied', from: D(8), to: D(9), reason: 'Family function', appliedOn: D(-1) }));
@@ -3885,6 +3974,7 @@ const RS = {
   evaluations:     { label:'Evaluations', date:r => r.due || r.received, title:r => r.paper, status:r => r.status, detail:r => [r.evalType, r.exam, r.scripts ? (r.done || 0) + '/' + r.scripts + ' scripts' : ''].filter(Boolean).join(' · ') },
   mentorMeetings:  { label:'Mentoring meetings', date:r => r.date, title:r => (r.kind || 'Meeting') + ' — ' + menteeNames(r), status:r => r.status, detail:r => [r.agenda, r.notes, r.actions && 'Actions: ' + r.actions].filter(Boolean).join(' | ') },
   classLog:        { label:'Class-teacher follow-ups', date:r => r.date, title:r => ((WD.byId(state.data, 'classGroups', r.classId) || {}).name || 'Class') + ' — ' + (r.kind || ''), status:r => r.status, detail:r => [(r.studentIds || []).map(id => (WD.byId(state.data, 'students', id) || {}).name).filter(Boolean).join(', '), r.summary, r.action && 'Action: ' + r.action].filter(Boolean).join(' | ') },
+  achievements:    { label:'Achievements & certificates', date:r => r.date || r.end || r.start, title:r => r.title, status:r => r.status, detail:r => [r.kind, r.issuer, r.level, r.duration, r.grade && 'Grade: ' + r.grade, r.certNo && 'No. ' + r.certNo].filter(Boolean).join(' · ') },
   leaves:          { label:'Leave & OD', date:r => r.from, title:r => r.type, status:r => r.status, detail:r => [WD.leaveDays(state.data, r, state.settings) + ' day(s)', r.to && r.to !== r.from ? 'till ' + fdate(r.to) : '', r.reason, WD.linkName(state.data, r.link)].filter(Boolean).join(' · ') },
   mentees:         { label:'Mentees', date:() => '', title:r => r.name, status:r => r.active === 'No' ? 'Inactive' : 'Active', detail:r => [r.regNo, r.programme, r.batch].filter(Boolean).join(' · ') },
   plans:           { label:'Research plans', date:r => r.target, title:r => r.title, status:r => r.status, detail:r => { const m = r.milestones || []; return m.length ? m.filter(x => x.done).length + '/' + m.length + ' milestones · ' + m.map(x => (x.done ? '✓ ' : '○ ') + x.text).join('; ') : ''; } },
@@ -3906,7 +3996,7 @@ const RS = {
   holidays:        { label:'Holidays', date:r => r.date, title:r => r.name, status:() => '', detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
   courses:         { label:'Courses', date:() => '', title:r => courseName(r.id), status:r => r.kind, detail:r => [r.classLabel, r.credits && r.credits + ' credits', (WD.byId(state.data, 'semesters', r.semesterId) || {}).name].filter(Boolean).join(' · ') }
 };
-const PERIOD_ORDER = [['Teaching', ['diary','extraClasses']], ['Examinations', ['examDuties','evaluations']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
+const PERIOD_ORDER = [['Teaching', ['diary','extraClasses']], ['Examinations', ['examDuties','evaluations']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Achievements & certificates', ['achievements']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
 function unitTitle(r){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(r.unit)); return u ? u.title : ''; }
 function menteeNames(r){ const n = (r.menteeIds || []).map(id => (WD.byId(state.data, 'mentees', id) || {}).name).filter(Boolean); return n.length > 4 ? n.length + ' mentees' : n.join(', '); }
 function inPeriod(cfg, r, from, to){
@@ -4069,7 +4159,9 @@ function buildAppraisal(from, to, stamp, p){
     { title: 'D. Extension & professional development', blocks: [
       { label: 'FDPs, workshops & courses attended', rows: sectionRows('conferences', from, to, r => !/presentation|Invited|Keynote|Resource|Organiser/.test(r.role || '') && r.status !== 'Presented').concat(sectionRows('events', from, to, r => r.category === 'FDP / training programme')) },
       { label: 'Resource person / organiser', rows: sectionRows('conferences', from, to, r => /Resource|Organiser|chair/i.test(r.role || '')).concat(sectionRows('events', from, to, r => /Resource|Organiser|Speaker|Judge/.test(r.role || '') && !['Institutional event','Event I am in-charge of','Research event'].includes(r.category))) },
-      { label: 'Teaching-related & other academic activities', rows: sectionRows('events', from, to, r => ['Teaching-related event','Other academic activity'].includes(r.category)) } ] }
+      { label: 'Teaching-related & other academic activities', rows: sectionRows('events', from, to, r => ['Teaching-related event','Other academic activity'].includes(r.category)) },
+      { label: 'Courses completed & certifications (MOOC / NPTEL / SWAYAM / professional)', rows: sectionRows('achievements', from, to, r => ['Course completion (MOOC / NPTEL / SWAYAM)','Professional certification','FDP / training certificate'].includes(r.kind) && !['Enrolled','In progress','Exam registered','Dropped','Nominated / applied'].includes(r.status)) },
+      { label: 'Awards, honours & recognition', rows: sectionRows('achievements', from, to, r => !['Course completion (MOOC / NPTEL / SWAYAM)','Professional certification','FDP / training certificate','Workshop / conference participation'].includes(r.kind) && ['Awarded','Certificate received'].includes(r.status)) } ] }
   ];
   const summary = [
     ['Classes taken', teaching.classes], ['Teaching hours', +teaching.hours.toFixed(1)],
@@ -4077,7 +4169,8 @@ function buildAppraisal(from, to, stamp, p){
     ['Papers submitted', pubRaw.filter(x => ['Submitted','Under review','Revision requested','Accepted'].includes(x.status)).length], ['Projects sanctioned', proj.filter(x => projectGroup(x) === 'sanctioned').length],
     ['Grant amount sanctioned', money(proj.filter(x => projectGroup(x) === 'sanctioned').reduce((a, x) => a + (+x.amount || 0), 0)) || '₹0'], ['Proposals applied', proj.filter(x => projectGroup(x) === 'applied').length],
     ['Conferences / events', cfAll.length + evAll.length], ['Reviews done', S('reviews').filter(r => r.status === 'Submitted').length],
-    ['Responsibilities held', S('responsibilities').length], ['Exam duties', S('examDuties').length]
+    ['Responsibilities held', S('responsibilities').length], ['Exam duties', S('examDuties').length],
+    ['Courses / certifications completed', state.data.achievements.filter(r => inPeriod(RS.achievements, r, from, to)).filter(r => ['Course completion (MOOC / NPTEL / SWAYAM)','Professional certification','FDP / training certificate'].includes(r.kind) && ['Certificate received','Certificate awaited'].includes(r.status)).length], ['Awards & recognitions', state.data.achievements.filter(r => inPeriod(RS.achievements, r, from, to) && r.status === 'Awarded').length]
   ];
   return { kind: 'appraisal', from, to, stamp, profile: p, parts, summary, teaching };
 }
@@ -4173,7 +4266,7 @@ const NOTE_TARGETS = [
   ['extraClasses', 'Extra class'], ['examDuties', 'Exam duty'], ['evaluations', 'Evaluation'], ['mentorMeetings', 'Mentoring meeting'],
   ['publications', 'Publication'], ['conferences', 'Conference / workshop'], ['reviews', 'Peer review'], ['plans', 'Research plan'],
   ['collaborations', 'Collaboration'], ['contacts', 'Researcher contact'], ['projects', 'Project / grant'], ['responsibilities', 'Responsibility'],
-  ['schedule', 'Academic schedule entry'], ['leaves', 'Leave / OD'], ['classLog', 'Class follow-up']
+  ['schedule', 'Academic schedule entry'], ['leaves', 'Leave / OD'], ['achievements', 'Achievement / certificate'], ['classLog', 'Class follow-up']
 ];
 // where the first line and the full text go, and which date field to fill
 const NOTE_MAP = {
@@ -4183,7 +4276,7 @@ const NOTE_MAP = {
   conferences:{ t:'title', n:'notes', d:'start' }, reviews:{ t:'journal', n:'notes', d:'due' }, plans:{ t:'title', n:'notes', d:'target' },
   collaborations:{ t:'name', n:'outcomes', d:'since' }, contacts:{ t:'name', n:'notes' }, projects:{ t:'title', n:'notes' },
   responsibilities:{ t:'title', n:'notes', d:'since' }, schedule:{ t:'title', n:'notes', d:'date' },
-  leaves:{ t:'reason', n:'notes', d:'from' }, classLog:{ t:'summary', n:'action', d:'date' }
+  leaves:{ t:'reason', n:'notes', d:'from' }, achievements:{ t:'title', n:'notes', d:'date' }, classLog:{ t:'summary', n:'action', d:'date' }
 };
 const NOTE_HINTS = [
   [/\b(meeting|meet with|iqac|bos|board of studies|hod|dean|staff meeting)\b/i, 'meetings'],
@@ -4196,6 +4289,7 @@ const NOTE_HINTS = [
   [/\b(grant|proposal|funding|anrf|serb|dst|ugc|utili[sz]ation|uc\b)\b/i, 'projects'],
   [/\b(extra class|remedial|make-?up class|substitution)\b/i, 'extraClasses'],
   [/\b(taught|covered|class today|lecture on)\b/i, 'diary'],
+  [/\b(certificate|nptel|swayam|coursera|mooc|award|honou?r|recogni[sz]ed|best paper)\b/i, 'achievements'],
   [/\b(leave|od|on duty|duty leave)\b/i, 'leaves'],
   [/\b(class teacher|attendance shortage|class rep)\b/i, 'classLog'],
   [/\b(remind|renew|pay|call|email|send|follow up|follow-up|submit by)\b/i, 'reminders']
