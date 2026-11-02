@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-02-9">
-<meta name="app-version" content="1.9">
+<meta name="app-build" content="2026-11-02-10">
+<meta name="app-version" content="1.10">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -558,6 +558,11 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 :root[data-theme="dark"]{--c-achievement:#E3A3DD;--c-achievement-w:#33213A}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-achievement:#E3A3DD;--c-achievement-w:#33213A}}
 
+.cal .ev.span{border-left:3px solid;border-radius:3px 0 0 3px}
+.cal .ev.span.cont{opacity:.85;border-left-style:dotted}
+.cal .ev.span.last{border-radius:3px}
+.cal .ev .spn{font-weight:700;font-size:9px;opacity:.75}
+
 </style>
 </head>
 <body>
@@ -934,6 +939,34 @@ var WD = (function () {
       if (extra) Object.keys(extra).forEach(function (k) { if (k !== 'lead') it[k] = extra[k]; });
       items.push(it);
     }
+    /* Items that last several days (events, conferences, leave, holidays, schedule entries).
+       Calendar (opts.spans): one entry on every day from start to end, so each day shows what is on.
+       Alerts / dashboard / email: the usual heads-up on the first day, plus a "day n of m" entry on
+       today while it is still running. */
+    var spans = !!opts.spans;
+    function pushSpan(c, start, end, time, title, detail, ref, extra) {
+      if (!validDate(start)) return;
+      var last = validDate(end) && end > start ? end : start;
+      if (last === start) { push(c, start, time, title, detail, ref, false, extra); return; }
+      var n = diffDays(start, last) + 1, ex = {};
+      if (extra) Object.keys(extra).forEach(function (k) { if (k !== 'lead') ex[k] = extra[k]; });
+      function make(d, more) {
+        var it = { date: d, time: d === start ? (time || '') : '', cat: c, title: title, detail: [detail, 'day ' + (diffDays(start, d) + 1) + ' of ' + n].filter(Boolean).join(' · '), ref: ref || null, overdue: false, spanStart: start, spanEnd: last, spanDay: diffDays(start, d) + 1, spanDays: n };
+        Object.keys(ex).forEach(function (k) { it[k] = ex[k]; });
+        if (more) Object.keys(more).forEach(function (k) { it[k] = more[k]; });
+        return it;
+      }
+      if (spans) {
+        if (!on(c)) return;
+        var a = start < from ? from : start, b = last > to ? to : last;
+        for (var d = a, g = 0; d <= b && g < 400; d = addDays(d, 1), g++) items.push(make(d));
+        return;
+      }
+      var before = items.length;
+      push(c, start, time, title, detail, ref, false, extra);
+      if (items.length > before) { items[items.length - 1].spanStart = start; items[items.length - 1].spanEnd = last; items[items.length - 1].spanDays = n; }
+      if (on(c) && start < today && last >= today && today >= from && today <= to) items.push(make(today, { ongoing: true, title: title + ' (continues)' }));
+    }
     function cname(id) { var c = byId(data, 'courses', id); return c ? ((c.code ? c.code + ' · ' : '') + (c.title || '')) : 'Class'; }
 
     // classes
@@ -950,8 +983,8 @@ var WD = (function () {
       });
     }
     // academic calendar
-    list(data, 'schedule').forEach(function (e) { push('academic', e.date, '', e.title, e.category + (e.endDate && e.endDate !== e.date ? ' (till ' + short(e.endDate) + ')' : ''), { coll: 'schedule', id: e.id }, false); });
-    list(data, 'holidays').forEach(function (h) { push('academic', h.date, '', 'Holiday: ' + h.name, h.endDate && h.endDate !== h.date ? 'till ' + short(h.endDate) : '', { coll: 'holidays', id: h.id }, false); });
+    list(data, 'schedule').forEach(function (e) { pushSpan('academic', e.date, e.endDate, '', e.title, e.category + (e.endDate && e.endDate > e.date ? ' (till ' + short(e.endDate) + ')' : ''), { coll: 'schedule', id: e.id }); });
+    list(data, 'holidays').forEach(function (h) { pushSpan('academic', h.date, h.endDate, '', 'Holiday: ' + h.name, h.endDate && h.endDate > h.date ? 'till ' + short(h.endDate) : '', { coll: 'holidays', id: h.id }); });
     list(data, 'semesters').forEach(function (s) {
       push('academic', s.start, '', s.name + ' begins', '', { coll: 'semesters', id: s.id }, false);
       push('academic', s.end, '', s.name + ' ends', '', { coll: 'semesters', id: s.id }, false);
@@ -1033,7 +1066,7 @@ var WD = (function () {
       push('conference', c.abstractDeadline, '', 'Abstract deadline: ' + t, c.organiser || '', { coll: 'conferences', id: c.id }, false);
       push('conference', c.registrationDeadline, '', 'Registration deadline: ' + t, c.organiser || '', { coll: 'conferences', id: c.id }, false);
       var cOut = (c.location || (c.mode === 'Online' ? 'Online' : 'Outside campus')) === 'Outside campus';
-      push('conference', c.start, '', (c.kind || 'Event') + ': ' + t, [cOut ? 'Outside campus — arrange OD / travel' : '', c.role, c.venue].filter(Boolean).join(' · '), { coll: 'conferences', id: c.id }, false, { lead: cOut && R.outside.on ? Math.max(R.conference.lead, R.outside.lead) : R.conference.lead, outside: cOut });
+      pushSpan('conference', c.start, c.end, '', (c.kind || 'Event') + ': ' + t, [cOut ? 'Outside campus — arrange OD / travel' : '', c.role, c.venue, c.end && c.end > c.start ? 'till ' + short(c.end) : ''].filter(Boolean).join(' · '), { coll: 'conferences', id: c.id }, { lead: cOut && R.outside.on ? Math.max(R.conference.lead, R.outside.lead) : R.conference.lead, outside: cOut });
     });
     list(data, 'publications').forEach(function (p) {
       if (['Revision requested', 'Major revision', 'Minor revision'].indexOf(p.status) !== -1) push('publication', p.revisionDue, '', 'Revision due: ' + (p.title || ''), p.venue || '', { coll: 'publications', id: p.id }, true);
@@ -1084,13 +1117,23 @@ var WD = (function () {
       if (rep !== 'None' && validDate(e.start)) {
         var dur = validDate(e.end) ? Math.max(0, diffDays(e.start, e.end)) : 0;
         var a0 = ignoreLead ? from : today, b0 = ignoreLead ? to : addDays(today, Math.max(evLead, 0));
-        if (on('event')) occurrencesBetween({ date: e.start, repeat: rep, until: e.until }, a0, b0).forEach(function (d) {
+        if (on('event')) occurrencesBetween({ date: e.start, repeat: rep, until: e.until }, addDays(a0, -dur), b0).forEach(function (d) {
+          var dEnd = addDays(d, dur);
+          if (spans && dur) {
+            for (var x = d < from ? from : d; x <= dEnd && x <= to; x = addDays(x, 1))
+              items.push({ date: x, time: x === d ? (e.time || '') : '', cat: 'event', title: e.title, detail: detail + ' · ' + rep.toLowerCase() + ' · day ' + (diffDays(d, x) + 1) + ' of ' + (dur + 1), ref: { coll: 'events', id: e.id }, overdue: false, occurrence: d, spanStart: d, spanEnd: dEnd, spanDay: diffDays(d, x) + 1, spanDays: dur + 1, outside: outside });
+            return;
+          }
+          if (d < a0) { // a multi-day occurrence that began earlier and is still running today
+            if (!ignoreLead && dEnd >= today) items.push({ date: today, time: '', cat: 'event', title: e.title + ' (continues)', detail: detail + ' · day ' + (diffDays(d, today) + 1) + ' of ' + (dur + 1), ref: { coll: 'events', id: e.id }, overdue: false, occurrence: d, ongoing: true });
+            return;
+          }
           if (!ignoreLead && d < today) return;
-          items.push({ date: d, time: e.time || '', cat: 'event', title: e.title, detail: detail + ' · ' + rep.toLowerCase() + (dur ? ' (' + (dur + 1) + ' days)' : ''), ref: { coll: 'events', id: e.id }, overdue: false, occurrence: d });
+          items.push({ date: d, time: e.time || '', cat: 'event', title: e.title, detail: detail + ' · ' + rep.toLowerCase() + (dur ? ' (' + (dur + 1) + ' days)' : ''), ref: { coll: 'events', id: e.id }, overdue: false, occurrence: d, spanEnd: dur ? dEnd : undefined, outside: outside });
         });
       } else {
         var multi = e.end && e.end !== e.start ? ' (till ' + short(e.end) + ')' : '';
-        if (e.status !== 'Completed' || ignoreLead) push('event', e.start, e.time, e.title, detail + multi, { coll: 'events', id: e.id }, false, { lead: evLead, outside: outside });
+        if (e.status !== 'Completed' || ignoreLead) pushSpan('event', e.start, e.end, e.time, e.title, detail + multi, { coll: 'events', id: e.id }, { lead: evLead, outside: outside });
       }
       if (!ignoreLead && R.minutes.on) {
         if (rep !== 'None' && validDate(e.start)) occurrencesBetween({ date: e.start, repeat: rep, until: e.until }, addDays(today, -30), addDays(today, -1)).forEach(function (d) {
@@ -1118,7 +1161,7 @@ var WD = (function () {
       if (['Cancelled', 'Rejected'].indexOf(l.status) !== -1) return;
       var lab = (l.type || 'Leave') + (l.to && l.to !== l.from ? ' (till ' + short(l.to) + ')' : '');
       if (l.status === 'Planned') push('leave', l.from, '', 'Apply for ' + lab, l.reason || '', { coll: 'leaves', id: l.id }, true);
-      else push('leave', l.from, '', 'On ' + lab, [l.status, l.reason].filter(Boolean).join(' · '), { coll: 'leaves', id: l.id }, false);
+      else pushSpan('leave', l.from, l.to, '', 'On ' + lab, [l.status, l.reason].filter(Boolean).join(' · '), { coll: 'leaves', id: l.id });
     });
     if (on('leave')) {
       var odLead = Math.max(R.leave.lead, R.outside.on ? R.outside.lead : 0);
@@ -1770,7 +1813,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -3100,17 +3143,17 @@ VIEWS.calendar = () => {
   const gridStart = WD.addDays(first, -dow0);
   const nextM = WD.addMonths(first, 1);
   const gridEnd = WD.addDays(gridStart, 41);
-  const items = WD.buildAgenda(state.data, state.settings, t, { from: gridStart, to: gridEnd, ignoreLead: true, allCats: true, includeOverdue: false });
+  const items = WD.buildAgenda(state.data, state.settings, t, { from: gridStart, to: gridEnd, ignoreLead: true, allCats: true, includeOverdue: false, spans: true });
   const byDate = {}; items.forEach(i => (byDate[i.date] = byDate[i.date] || []).push(i));
   const sel = state.calSel || t;
   let cells = '';
   for(let i = 0; i < 42; i++){
     const d = WD.addDays(gridStart, i), its = byDate[d] || [];
     const hol = WD.holidayOn(state.data, d); const k = WD.dayKeyFor(state.data, state.settings, d);
-    const cls = its.filter(x => x.cat === 'classes').length, other = its.filter(x => x.cat !== 'classes');
+    const cls = its.filter(x => x.cat === 'classes').length, other = its.filter(x => x.cat !== 'classes').sort((a, b) => (b.spanDays || 1) - (a.spanDays || 1));
     cells += `<div class="cell ${d < first || d >= nextM ? 'out' : ''} ${hol ? 'hol' : ''} ${d === t ? 'today' : ''} ${d === sel ? 'sel' : ''}" onclick="state.calSel='${d}';rerender()">
       <span class="dn">${+d.slice(8)}</span>${k ? `<span class="dk">${k[0] === 'D' && /^D\d/.test(k) ? k : ''}${cls ? ' · ' + cls + ' cls' : ''}</span>` : ''}
-      ${other.slice(0, 3).map(x => `<div class="ev" style="background:var(--c-${x.cat}-w);color:var(--c-${x.cat})">${esc(x.title)}</div>`).join('')}${other.length > 3 ? `<div class="more">+${other.length - 3} more</div>` : ''}
+      ${other.slice(0, 3).map(x => `<div class="ev${x.spanDays > 1 ? ' span' + (x.spanDay > 1 ? ' cont' : '') + (x.date === x.spanEnd ? ' last' : '') : ''}" style="background:var(--c-${x.cat}-w);color:var(--c-${x.cat});border-color:var(--c-${x.cat})" title="${esc(x.title + (x.spanDays > 1 ? ' — day ' + x.spanDay + ' of ' + x.spanDays : ''))}">${x.spanDays > 1 && x.spanDay > 1 ? '↳ ' : ''}${esc(x.title)}${x.spanDays > 1 && x.spanDay === 1 ? ` <b class="spn">${x.spanDays}d</b>` : ''}</div>`).join('')}${other.length > 3 ? `<div class="more">+${other.length - 3} more</div>` : ''}
       <div class="dots">${other.slice(0, 6).map(x => `<i style="background:var(--c-${x.cat})"></i>`).join('')}</div></div>`;
   }
   const sItems = (byDate[sel] || []);
@@ -3728,11 +3771,11 @@ function exportIcs(){
   const e = s => String(s || '').replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Faculty Workdesk//EN','CALSCALE:GREGORIAN','X-WR-CALNAME:Faculty Workdesk','X-WR-TIMEZONE:Asia/Kolkata'];
-  items.forEach((i, n) => {
+  items.filter(i => !i.ongoing).forEach((i, n) => {
     const d = i.date.replace(/-/g, '');
     lines.push('BEGIN:VEVENT', `UID:wd-${i.cat}-${(i.ref && i.ref.id) || n}-${d}-${(i.time || '').replace(':', '')}@workdesk`, 'DTSTAMP:' + stamp);
     if(i.time){ const end = i.end || (WD.pad(Math.min(23, Math.floor((WD.minutes(i.time) + 60) / 60))) + ':' + WD.pad((WD.minutes(i.time) + 60) % 60)); lines.push(`DTSTART;TZID=Asia/Kolkata:${d}T${i.time.replace(':', '')}00`, `DTEND;TZID=Asia/Kolkata:${d}T${end.replace(':', '')}00`); }
-    else lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${WD.addDays(i.date, 1).replace(/-/g, '')}`);
+    else lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${WD.addDays(i.spanEnd && i.spanEnd > i.date ? i.spanEnd : i.date, 1).replace(/-/g, '')}`);
     lines.push('SUMMARY:' + e(i.title), 'DESCRIPTION:' + e((CAT_SHORT[i.cat] || '') + (i.detail ? ' — ' + i.detail : '')), 'CATEGORIES:' + e(CAT_SHORT[i.cat] || i.cat), 'END:VEVENT');
   });
   lines.push('END:VCALENDAR');
@@ -4436,7 +4479,7 @@ function weekReviewData(base){
   const leaves = D.leaves.filter(l => !['Cancelled','Rejected'].includes(l.status) && l.from <= w.sun && (l.to || l.from) >= w.mon);
   const notesFiled = D.notes.filter(n => inWk(n.filedOn, w)).length;
   const nw = { mon: WD.addDays(w.mon, 7), sun: WD.addDays(w.sun, 7) };
-  const next = WD.buildAgenda(D, state.settings, t, { from: nw.mon, to: nw.sun, ignoreLead: true, allCats: true, includeOverdue: false }).filter(i => i.cat !== 'classes');
+  const next = WD.buildAgenda(D, state.settings, t, { from: nw.mon, to: nw.sun, ignoreLead: true, allCats: true, includeOverdue: false, spans: true }).filter(i => i.cat !== 'classes' && (!i.spanDays || i.spanDay === 1 || i.date === nw.mon));
   let nextClasses = 0; WD.eachDay(nw.mon, nw.sun, d => nextClasses += WD.sessionsOn(D, state.settings, d).length);
   const stillOpen = D.actions.filter(a => itemBucket('actions', a) === 'overdue').length + D.reminders.filter(r => itemBucket('reminders', r) === 'overdue').length;
   return { w, nw, done, byCourse, meetingsHeld, eventsWk, actionsDone, remindersDone, duties, evalsDone, mentoring, classLog, pubs, reviews, leaves, notesFiled, next, nextClasses, stillOpen, pend: WD.pendingDiary(D, state.settings, t, nowParts().mins).filter(s => inWk(s.date, w)).length };
