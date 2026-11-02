@@ -37,6 +37,10 @@ In the Apps Script editor, choose **setUpTriggers** from the function dropdown a
 
 To check that email works, run **testDigest**.
 
+**Also created automatically as you use the app** (no setup needed):
+- an **activity** tab in the sheet — the change history (every add, edit and delete, with a copy of anything deleted so it can be restored);
+- a Drive folder **Faculty Workdesk files** — files you upload from a *Documents & links* field, sorted into one sub-folder per section. The first upload asks you to authorise Drive access again only if you deployed before v1.7 (re-deploy as a new version and approve).
+
 ---
 
 ## Part 2: Connect the app
@@ -72,6 +76,7 @@ Why installing usually fails:
 
 - Every data request carries a hash of your PIN. The backend compares it with the copy held in **Script Properties**, which is neither in the sheet nor in the web page. Knowing the URL and `APP_KEY` (both visible in the page source) is therefore **not** enough to read your data.
 - After 8 wrong PINs in 15 minutes, sign-in is locked for 15 minutes.
+- **Auto-lock** (Settings → App & security): after the chosen time without use the app covers the screen and asks for the PIN (default 15 minutes).
 - **Forgot your PIN?** Run **resetPin** in the Apps Script editor, then open the app. It will ask for the setup key and a new PIN. Your data is not touched.
 - This is a personal productivity tool. Do not store anything that needs institutional-grade protection, such as student health records or confidential evaluation results.
 
