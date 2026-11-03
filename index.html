@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-02-10">
-<meta name="app-version" content="1.10">
+<meta name="app-build" content="2026-11-03-2">
+<meta name="app-version" content="1.12">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -562,6 +562,7 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .cal .ev.span.cont{opacity:.85;border-left-style:dotted}
 .cal .ev.span.last{border-radius:3px}
 .cal .ev .spn{font-weight:700;font-size:9px;opacity:.75}
+.dash-main>.dcol{align-self:start}
 
 </style>
 </head>
@@ -635,7 +636,7 @@ var WD = (function () {
     'plans', 'publications', 'collaborations', 'conferences', 'reviews', 'contacts', 'metrics',
     'projects',
     'responsibilities', 'committees', 'meetings', 'actions', 'reminders',
-    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements'
+    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements', 'offices'
   ];
 
   /* Reminder categories: label, default lead time (days before), default on. */
@@ -855,6 +856,8 @@ var WD = (function () {
   function meetingTitle(data, m) {
     var c = m.committeeId ? byId(data, 'committees', m.committeeId) : null;
     var head = c ? c.name : (m.kind || 'Meeting');
+    // a meeting held for a responsibility or an office is named after it: "Examination office (COE): Valuation schedule"
+    if (!c && ['Responsibility / in-charge meeting', 'Other', ''].indexOf(m.kind || '') !== -1 && /^(responsibilities|offices):/.test(String(m.link || ''))) { var lt = linkTarget(data, m.link); if (lt && lt.rec && (lt.rec.title || lt.rec.name)) head = lt.rec.title || lt.rec.name; }
     return head + (m.title ? ': ' + m.title : '');
   }
 
@@ -1267,6 +1270,18 @@ const STATUS_TONE = {
 
 const ACH_KINDS = ['Course completion (MOOC / NPTEL / SWAYAM)','FDP / training certificate','Workshop / conference participation','Professional certification','Award / honour','Best paper / poster award','Recognition / appreciation','Fellowship / membership','Patent / copyright / design','Invited talk / resource person','Student achievement (guided by me)','Other'];
 const ACH_STATUSES = ['Enrolled','In progress','Exam registered','Certificate awaited','Certificate received','Awarded','Nominated / applied','Expired','Dropped'];
+const OFFICE_KINDS = ['Department','School','University / Campus','Holistic education (HED)','Centre','Examination office','Office','External body','Other'];
+/* Standard places work belongs to, created once so they can be picked in every "Linked to" list.
+   Fixed ids, so two devices setting up at the same time create the same records. */
+const STANDARD_OFFICES = p => [
+  ['u-department', (p && p.department) || 'Department', 'Department'],
+  ['u-school', 'School', 'School'],
+  ['u-university', 'University / Campus', 'University / Campus'],
+  ['u-hed', 'HED', 'Holistic education (HED)'],
+  ['u-centre', 'Research centre', 'Centre'],
+  ['u-othercentres', 'Other centres', 'Centre'],
+  ['u-exam', 'Examination office (COE)', 'Examination office']
+];
 const DAY_OPTIONS = () => state.settings.timetable.mode === 'dayorder'
   ? Array.from({length: +state.settings.timetable.dayOrders || 6}, (_, i) => 'D' + (i + 1))
   : ['Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1742,7 +1757,21 @@ const SCHEMA = {
       {k:'notes', label:'Notes', type:'textarea', full:true}
 ,
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
-    ], cols:['title','role','level','paperworkProg','linkedSum','docs','status'], sort:['since','desc'] },
+    ], cols:['title','role','level','paperworkProg','linkedSum','nextMeeting','docs','status'], sort:['since','desc'] },
+
+  offices: { label:'Units & offices', one:'unit / office',
+    fields:[
+      {k:'name', label:'Name', type:'text', req:true, ph:'Department of Physics and Electronics, School of Sciences, HED, Office of the COE, Centre for Research'},
+      {k:'kind', label:'Type', type:'select', opts:OFFICE_KINDS, def:'Department'},
+      {k:'head', label:'Head / contact person', type:'text'},
+      {k:'email', label:'Email', type:'email'},
+      {k:'phone', label:'Phone / extension', type:'text'},
+      {k:'location', label:'Office location', type:'text'},
+      {k:'website', label:'Website / portal', type:'url'},
+      {k:'status', label:'Status', type:'select', opts:['Active','Inactive'], def:'Active'},
+      {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['name','kind','head','linkedSum','nextMeeting','docs','status'], sort:['kind','asc'] },
 
   committees: { label:'Committees', one:'committee',
     fields:[
@@ -1759,7 +1788,7 @@ const SCHEMA = {
 
   meetings: { label:'Meetings', one:'meeting',
     fields:[
-      {k:'kind', label:'Type of meeting', type:'select', opts:['Department meeting','Committee meeting','School / Faculty meeting','Campus / University meeting','Staff meeting','Meeting with HoD / Dean','Research group meeting','Project review meeting','Parent / student meeting','External / industry meeting','Online meeting','Other'], def:'Department meeting'},
+      {k:'kind', label:'Type of meeting', type:'select', opts:['Department meeting','Committee meeting','Responsibility / in-charge meeting','School / Faculty meeting','Campus / University meeting','Staff meeting','Meeting with HoD / Dean','Research group meeting','Project review meeting','Parent / student meeting','External / industry meeting','Online meeting','Other'], def:'Department meeting'},
       {k:'committeeId', label:'Committee (only for committee meetings)', type:'ref', ref:'committees', optional:true},
       {k:'with', label:'Organised by / with', type:'text', ph:'HoD, Dean, IQAC, funding agency…'},
       {k:'link', label:'Linked to (responsibility, committee, event, project, class…)', type:'parent', full:true, help:'Connects this item to the work it belongs to. It then shows up on that record too.'},
@@ -1813,7 +1842,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -2253,11 +2282,11 @@ const NAV = [
   { g:'Students', items:[['classTeacher','Class teacher'],['mentees','Mentees'],['mentorMeetings','Mentoring meetings']] },
   { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
   { g:'Projects & funding', items:[['projects','Projects & grants'],['fundingCalls','Funding calls']] },
-  { g:'Administration', items:[['responsibilities','Responsibilities'],['meetings','Meetings'],['committees','Committees'],['leaves','Leave & OD']] },
+  { g:'Administration', items:[['responsibilities','Responsibilities'],['meetings','Meetings'],['committees','Committees'],['offices','Units & offices'],['leaves','Leave & OD']] },
   { g:'Profile', items:[['achievements','Achievements']] },
   ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', offices:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
 const NAV_ICON = {
   dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
   calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
@@ -2296,9 +2325,17 @@ function enterApp(){
   const hash = location.hash.replace('#', '');
   if(hash && (VIEWS[hash] || SCHEMA[hash])) state.view = hash;
   renderSync(); rerender();
+  setTimeout(seedStandardOffices, 1500);
   if(!enterApp._checkedIdle){ enterApp._checkedIdle = true; setTimeout(lockIfIdleSinceLastVisit, 50); }
 }
 
+async function seedStandardOffices(){
+  if(state.readonly || (REMOTE && !state.auth) || state.settings.officesSeeded || (state.data.offices || []).length) return;
+  if(REMOTE){ try{ await store.load(); }catch(e){ return; } if(state.settings.officesSeeded || (state.data.offices || []).length) return; } // never overwrite units already set up on another device
+  for(const [id, name, kind] of STANDARD_OFFICES(state.settings.profile)) if(!WD.byId(state.data, 'offices', id)) await store.upsert('offices', { id, name, kind, status: 'Active' });
+  await store.saveSettings(Object.assign({}, state.settings, { officesSeeded: true }));
+  if(state.view === 'offices') rerender();
+}
 function navCounts(){
   const t = today(), n = nowParts();
   return {
@@ -2426,7 +2463,12 @@ function fieldHtml(coll, f, rec){
     case 'parent': {
       const opts = PARENT_TYPES.map(([pc, pl]) => {
         const recs = parentCandidates(pc, rec).filter(r => !(pc === coll && r.id === rec.id));
-        return recs.length ? `<optgroup label="${esc(pl)}">${recs.map(r => `<option value="${pc}:${r.id}" ${v === pc + ':' + r.id ? 'selected' : ''}>${esc(WD.linkName(state.data, pc + ':' + r.id) || '(untitled)')}</option>`).join('')}</optgroup>` : '';
+        const og = (label, list) => list.length ? `<optgroup label="${esc(label)}">${list.map(r => `<option value="${pc}:${r.id}" ${v === pc + ':' + r.id ? 'selected' : ''}>${esc(WD.linkName(state.data, pc + ':' + r.id) || '(untitled)')}</option>`).join('')}</optgroup>` : '';
+        if(['responsibilities','committees','classGroups','offices'].includes(pc)){
+          const past = (state.data[pc] || []).filter(r => ['Completed','Inactive'].includes(r.status) && !recs.includes(r) && !(pc === coll && r.id === rec.id));
+          return og(pl, recs) + og(pl + ' — completed / past', past);
+        }
+        return og(pl, recs);
       }).join('');
       const broken = v && !WD.linkTarget(state.data, v).rec;
       input = `<select class="inp" id="${id}" name="${f.k}"><option value="">— Not linked —</option>${opts}${broken ? `<option value="${esc(v)}" selected>(linked record was deleted)</option>` : ''}</select>`;
@@ -2460,12 +2502,13 @@ function fieldHtml(coll, f, rec){
   return `<div class="${f.full || f.type === 'textarea' || f.type === 'multiref' ? 'full' : ''}" data-f="${f.k}">${lab}${input}${help}</div>`;
 }
 function ckRow(m){ return `<div class="ck-row"><input type="checkbox" ${m.done ? 'checked' : ''}><input class="inp" placeholder="Milestone" value="${esc(m.text || '')}"><input class="inp" type="date" value="${esc(m.due || '')}" title="Due"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
-const PARENT_TYPES = [['responsibilities','Responsibilities & in-charges'],['classGroups','My classes'],['committees','Committees'],['events','Events'],['meetings','Meetings'],['projects','Projects & grants'],['courses','Courses']];
+const PARENT_TYPES = [['committees','Committees'],['responsibilities','Responsibilities & in-charges'],['classGroups','Class teacher — my classes'],['offices','Department · School · University · HED · Centres · Exam office'],['events','Events'],['projects','Projects & grants'],['courses','Courses'],['meetings','Meetings']];
 function parentCandidates(pc, rec){
   const t = today(), cur = rec && rec.link;
   let a = (state.data[pc] || []).slice();
   if(pc === 'responsibilities' || pc === 'committees' || pc === 'classGroups') a = a.filter(r => r.status !== 'Completed' || cur === pc + ':' + r.id);
-  if(pc === 'meetings') a = a.filter(r => r.date >= WD.addDays(t, -60) || cur === pc + ':' + r.id).sort((x, y) => x.date < y.date ? 1 : -1);
+  if(pc === 'meetings') a = a.filter(r => cur === pc + ':' + r.id); // not offered for new links; kept only for an existing link (e.g. an action item made from a meeting)
+  if(pc === 'offices') a = a.filter(r => r.status !== 'Inactive' || cur === pc + ':' + r.id).sort((x, y) => OFFICE_KINDS.indexOf(x.kind) - OFFICE_KINDS.indexOf(y.kind) || String(x.name).localeCompare(String(y.name)));
   if(pc === 'events') a = a.filter(r => (r.end || r.start) >= WD.addDays(t, -90) || (r.repeat && r.repeat !== 'None') || cur === pc + ':' + r.id);
   if(pc === 'projects') a = a.filter(r => !['Rejected','Closed','Not submitted'].includes(r.status) || cur === pc + ':' + r.id);
   if(pc === 'courses'){ const cs = currentSemester(); a = a.filter(r => !cs || r.semesterId === cs.id || cur === pc + ':' + r.id); }
@@ -2656,7 +2699,7 @@ function connectedPanel(coll, id){
   const byDate = k => (a, b) => (a[k] || '') < (b[k] || '') ? 1 : -1;
   return `<div class="connected"><div class="cn-title">Connected to this ${esc(SCHEMA[coll].one)}</div><div class="cn-grid">
     ${sec('events', 'Events', L.events.slice().sort(byDate('start')), r => `<span>${fdate(r.start, 'short')}</span><span class="cn-t">${esc(r.title)}${r.repeat && r.repeat !== 'None' ? ' <span class="faint">· ' + esc(r.repeat.toLowerCase()) + '</span>' : ''}</span>${chip(r.status)}`)}
-    ${sec('meetings', 'Meetings', L.meetings.slice().sort(byDate('date')), r => `<span>${fdate(r.date, 'short')}</span><span class="cn-t">${esc(WD.meetingTitle(state.data, r))}</span>${chip(r.status)}`)}
+    ${sec('meetings', 'Meetings', L.meetings.map(r => Object.assign({}, r, { _d: meetingNext(r) || r.date, _miss: meetingMissingMinutes(r).length })).sort((a, b) => (a._d || '') < (b._d || '') ? 1 : -1), r => `<span>${fdate(r._d, 'short')}</span><span class="cn-t">${esc(WD.meetingTitle(state.data, r))}${r.repeat && r.repeat !== 'None' ? ' <span class="faint">· ' + esc(r.repeat.toLowerCase()) + '</span>' : ''}${r._miss ? ` <span style="color:var(--bad);font-size:11.5px;font-weight:600">· minutes pending${r._miss > 1 ? ' (' + r._miss + ')' : ''}</span>` : ''}</span>${chip(r.status)}`)}
     ${sec('actions', 'Action items', L.actions.slice().sort((a, b) => (a.due || '') < (b.due || '') ? -1 : 1), r => `<span>${r.due ? fdate(r.due, 'short') : '—'}</span><span class="cn-t">${esc(r.title)}</span>${state1('actions', r)}`)}
     ${sec('reminders', 'Reminders', L.reminders, r => `<span>${fdate(WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : t) || r.date, 'short')}</span><span class="cn-t">${esc(r.title)}</span>${state1('reminders', r)}`)}
     ${L.classLog ? sec('classLog', 'Class follow-ups', L.classLog.slice().sort(byDate('date')), r => `<span>${fdate(r.date, 'short')}</span><span class="cn-t">${esc(r.kind)}: ${esc(String(r.summary || '').slice(0, 60))}</span>${chip(r.status)}`) : ''}
@@ -2687,6 +2730,10 @@ function addLinked(c, coll, id){
   const t = today(), p = c === 'classLog' ? { classId: id, date: t } : { link: coll + ':' + id };
   if(c === 'actions') p.due = t; if(c === 'reminders') p.date = t; if(c === 'meetings') p.date = t; if(c === 'events') p.start = t;
   if(c === 'meetings' && coll === 'committees'){ p.committeeId = id; p.kind = 'Committee meeting'; }
+  if(c === 'meetings' && coll === 'responsibilities') p.kind = 'Responsibility / in-charge meeting';
+  if(coll === 'offices'){ const u = WD.byId(state.data, 'offices', id) || {};
+    if(c === 'meetings') p.kind = { 'Department':'Department meeting', 'School':'School / Faculty meeting', 'University / Campus':'Campus / University meeting' }[u.kind] || 'Other';
+    if(c === 'events') p.category = 'Institutional event'; }
   if(c === 'events' && coll === 'responsibilities') p.category = 'Event I am in-charge of';
   if(c === 'events' && coll === 'classGroups') p.category = 'Teaching-related event';
   editRecord(c, null, p);
@@ -2747,7 +2794,7 @@ const VIRTUAL = {
   callStage: (coll, r) => { const k = callNextDate(r); return k ? `<span style="white-space:nowrap">${esc(k.label)}</span><div class="faint" style="font-size:11.5px">${relDay(k.date)}</div>` : '<span class="faint">—</span>'; },
   meetingName: (coll, r) => `<b style="font-weight:600">${esc(WD.meetingTitle(state.data, r))}</b>${r.with ? `<div class="faint" style="font-size:12px">${esc(r.with)}</div>` : ''}`,
   lastMet: (coll, r) => { const d = lastMetDate(r.id); if(!d) return '<span class="chip warn">Not met yet</span>'; const n = WD.diffDays(d, today()); return `${fdate(d)} <span class="faint">(${n}d)</span>`; },
-  nextMeeting: (coll, r) => { const d = state.data.meetings.filter(x => x.committeeId === r.id).map(x => meetingNext(x)).filter(Boolean).sort()[0]; return d ? fdate(d) : '<span class="faint">—</span>'; },
+  nextMeeting: (coll, r) => { const d = state.data.meetings.filter(x => (coll === 'committees' && x.committeeId === r.id) || x.link === coll + ':' + r.id).map(x => meetingNext(x)).filter(Boolean).sort()[0]; return d ? fdate(d) : '<span class="faint">—</span>'; },
   next: (coll, r) => { const d = WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : today()); return d ? `${fdate(d, 'dow')}${r.time ? ' ' + ftime(r.time) : ''}` : ''; },
   done: (coll, r) => (r.repeat || 'None') === 'None' ? (r.done ? chip('Done') : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')">Mark done</button>`) : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')" title="Skip to the next occurrence">Done for this time</button>`
 };
@@ -2799,6 +2846,7 @@ function filteredRows(coll, extraFilter){
     if(sk === 'day'){ x = dayIdx(x) * 10000 + (WD.minutes(a.start) || 0); y = dayIdx(y) * 10000 + (WD.minutes(b.start) || 0); }
     else if(coll === 'achievements' && (sk === 'date' || sk === 'achWhen')){ x = a.date || a.end; y = b.date || b.end; }
     else if(coll === 'achievements' && sk === 'achKind'){ x = a.kind; y = b.kind; }
+    else if(coll === 'offices' && sk === 'kind'){ x = OFFICE_KINDS.indexOf(a.kind) + 100; y = OFFICE_KINDS.indexOf(b.kind) + 100; }
     else if(coll === 'diary' && sk === 'date'){ x = (x || '') + (a.start || ''); y = (y || '') + (b.start || ''); }
     if(x == null || x === '') return 1; if(y == null || y === '') return -1;
     if(!isNaN(+x) && !isNaN(+y) && x !== '' && typeof x !== 'boolean' && !WD.validDate(String(x))) { x = +x; y = +y; }
@@ -3080,8 +3128,9 @@ VIEWS.dashboard = () => {
   // upcoming
   const up = WD.buildAgenda(state.data, state.settings, t, { from: WD.addDays(t, 1), to: WD.addDays(t, 14), ignoreLead: true, includeOverdue: false }).filter(i => i.cat !== 'classes');
   let lastD = '', upHtml = '';
-  up.slice(0, 30).forEach(i => { if(i.date !== lastD){ upHtml += `<div class="agday">${relDay(i.date) === fdate(i.date, 'short') ? fdate(i.date, 'dow') : relDay(i.date) + ' · ' + fdate(i.date, 'dow')}</div>`; lastD = i.date; } upHtml += agendaItemHtml(i, false); });
-  const upCard = `<div class="card"><h3>Next 14 days<span class="r"><button class="linkbtn" onclick="go('calendar')">Month view →</button></span></h3>${upHtml || '<div class="empty" style="padding:14px">Nothing dated in the next two weeks.</div>'}</div>`;
+  const UP_MAX = 10, upShown = state.dashUpAll ? up.slice(0, 60) : up.slice(0, UP_MAX);
+  upShown.forEach(i => { if(i.date !== lastD){ upHtml += `<div class="agday">${relDay(i.date) === fdate(i.date, 'short') ? fdate(i.date, 'dow') : relDay(i.date) + ' · ' + fdate(i.date, 'dow')}</div>`; lastD = i.date; } upHtml += agendaItemHtml(i, false); });
+  const upCard = `<div class="card"><h3>Next 14 days<span class="r"><button class="linkbtn" onclick="go('calendar')">Month view →</button></span></h3>${upHtml || '<div class="empty" style="padding:14px">Nothing dated in the next two weeks.</div>'}${up.length > UP_MAX ? `<button class="linkbtn" style="margin-top:8px" onclick="state.dashUpAll=!state.dashUpAll;rerender()">${state.dashUpAll ? 'Show fewer ↑' : `Show all ${up.length} →`}</button>` : ''}</div>`;
 
   // semester strip
   const semStrip = si ? `<div class="sem-strip">
@@ -3132,7 +3181,7 @@ VIEWS.dashboard = () => {
   return `<div class="hello"><div><h1>${greeting()}${p.name ? ', ' + esc(p.name) : ''}</h1><div class="d">${fdate(t, 'long')}</div>${[p.designation, p.department, p.institution].filter(Boolean).length ? `<div class="d" style="font-size:13px">${esc([p.designation, p.department, p.institution].filter(Boolean).join(' · '))}</div>` : ''}</div>
     <div class="qa"><button class="btn sm" onclick="editRecord('diary',null,{date:'${t}'})">+ Log class</button><button class="btn ghost sm" onclick="editRecord('extraClasses',null,{date:'${t}'})">+ Extra class</button><button class="btn ghost sm" onclick="editRecord('reminders',null,{date:'${t}'})">+ Reminder</button><button class="btn ghost sm" onclick="editRecord('actions')">+ Action</button></div></div>
     ${setup}${semStrip}${tiles}
-    <div class="grid dash-main"><div class="grid" style="align-content:start">${attCard}${todayCard}${eventsCard}${teachCard}</div><div class="grid" style="align-content:start">${notepadCard()}${upCard}${resCard}${projCard}</div></div>`;
+    <div class="grid dash-main" id="dashCols"><div class="grid dcol" style="align-content:start">${dc('att', attCard)}${dc('today', todayCard)}${dc('events', eventsCard)}${dc('teach', teachCard)}</div><div class="grid dcol" style="align-content:start">${dc('note', notepadCard())}${dc('up', upCard)}${dc('res', resCard)}${dc('proj', projCard)}</div></div>`;
 };
 
 /* ---------------- CALENDAR ---------------- */
@@ -3453,6 +3502,7 @@ VIEWS.achievements = () => {
   else body = listTable('achievements', { emptyHint: 'Course completions (NPTEL, SWAYAM, Coursera), FDP and workshop certificates, professional certifications, awards, best-paper awards, recognitions, memberships, patents and invited talks — each with the certificate link, ready for appraisal and NAAC files.' });
   return pageHead('Achievements & certificates', 'Courses completed, certificates, awards and recognitions — with the certificate copy on file') + tb.html + sum + body;
 };
+VIEWS.offices = () => pageHead('Units & offices', 'Department, school, university, HED, centres, examination office and other bodies your work is for. Link meetings, events, action items and reminders to them; each one then shows everything connected to it.') + listTable('offices');
 VIEWS.reviews = () => {
   const yr = today().slice(0, 4);
   const done = state.data.reviews.filter(r => r.status === 'Submitted' && (r.due || r.invited || '').slice(0, 4) === yr).length;
@@ -3712,7 +3762,26 @@ VIEWS.backup = () => {
 };
 
 
+/* Dashboard cards go into whichever column is shorter, in priority order, so neither column
+   ends in a long empty stretch. Runs after every draw and on window resize. */
+const dc = (k, html) => html ? `<div class="dcard" data-k="${k}">${html}</div>` : '';
+const DASH_ORDER = ['att', 'note', 'today', 'up', 'events', 'teach', 'res', 'proj'];
+function balanceDash(){
+  const wrap = $('#dashCols'); if(!wrap) return;
+  const cols = wrap.querySelectorAll('.dcol'); if(cols.length < 2) return;
+  const cards = {}; wrap.querySelectorAll('.dcard').forEach(c => cards[c.dataset.k] = c);
+  const keys = DASH_ORDER.filter(k => cards[k]);
+  const single = getComputedStyle(wrap).gridTemplateColumns.split(' ').length < 2;
+  if(single){ keys.forEach(k => cols[0].appendChild(cards[k])); return; }
+  keys.forEach(k => cards[k].remove());
+  keys.forEach(k => {
+    const toLeft = k === 'att' ? true : k === 'note' ? false : cols[0].getBoundingClientRect().height <= cols[1].getBoundingClientRect().height;
+    (toLeft ? cols[0] : cols[1]).appendChild(cards[k]);
+  });
+}
+let _dashRs; window.addEventListener('resize', () => { clearTimeout(_dashRs); _dashRs = setTimeout(balanceDash, 150); });
 function afterRender(){
+  balanceDash();
   const v = $('#ver'); if(v) v.textContent = (document.querySelector('meta[name=app-version]') || {}).content || '';
   const g = $('#setGeneral'); if(g) g.onsubmit = async e => {
     e.preventDefault(); const f = g.elements; const s = JSON.parse(JSON.stringify(state.settings));
