@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-03-2">
-<meta name="app-version" content="1.12">
+<meta name="app-build" content="2026-11-09-1">
+<meta name="app-version" content="1.13">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -564,6 +564,21 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .cal .ev .spn{font-weight:700;font-size:9px;opacity:.75}
 .dash-main>.dcol{align-self:start}
 
+
+:root{--c-adjust:#B4471F;--c-adjust-w:#FBEAE2}
+:root[data-theme="dark"]{--c-adjust:#F0A07E;--c-adjust-w:#3A231A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-adjust:#F0A07E;--c-adjust-w:#3A231A}}
+.daychk{margin-top:14px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2,var(--bg))}
+.daychk h4{margin:0 0 6px;font-size:12.5px;font-weight:650;color:var(--muted)}
+.daychk .dd{font-size:11.5px;font-weight:650;color:var(--muted);margin:8px 0 2px;text-transform:uppercase;letter-spacing:.03em}
+.daychk .dc-it{display:flex;gap:8px;align-items:baseline;font-size:13px;padding:2px 0}
+.daychk .dc-tm{min-width:96px;flex-shrink:0;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+.daychk .dc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;align-self:center}
+.daychk .dc-it.dc-ov{color:var(--bad);font-weight:600}
+.daychk .dc-it.dc-ov .dc-tm{color:var(--bad)}
+.daychk .warn{margin-top:8px;font-size:12.5px;color:var(--bad)}
+.daychk .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.adj-note{font-size:11.5px;color:var(--c-adjust);font-weight:600}
 </style>
 </head>
 <body>
@@ -636,7 +651,7 @@ var WD = (function () {
     'plans', 'publications', 'collaborations', 'conferences', 'reviews', 'contacts', 'metrics',
     'projects',
     'responsibilities', 'committees', 'meetings', 'actions', 'reminders',
-    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements', 'offices'
+    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements', 'offices', 'classAdjust'
   ];
 
   /* Reminder categories: label, default lead time (days before), default on. */
@@ -659,6 +674,7 @@ var WD = (function () {
     funding:     { label: 'Funding calls — opening, last date, planned submission', lead: 14, on: true },
     classteacher:{ label: 'Class-teacher follow-ups', lead: 1, on: true },
     achievement: { label: 'Courses & certificates — course exam / end date, certificate to download, renewal', lead: 7, on: true },
+    adjust:      { label: 'Class adjustments — a class of yours clashes with a meeting, duty, event, CIA / exam or leave', lead: 7, on: true },
     leave:       { label: 'Leave & OD — leave starting, OD not yet applied for outside-campus events', lead: 7, on: true },
     minutes:     { label: 'Minutes / session records pending after a meeting or recurring event', lead: 0, on: true },
     outside:     { label: 'Outside-campus events — alert at least this many days before (OD / travel)', lead: 3, on: true }
@@ -804,10 +820,69 @@ var WD = (function () {
       if (x.date === s) out.push({ key: s + '|x' + x.id, date: s, start: x.start, end: x.end, courseId: x.courseId,
         room: x.room, kind: x.kind || 'Extra', extraId: x.id, reason: x.reason });
     });
+    // class adjustments: mark the class that was substituted / swapped / rescheduled / skipped, and add its make-up class
+    var adj = list(data, 'classAdjust');
+    if (adj.length) {
+      out.forEach(function (se) {
+        for (var i = 0; i < adj.length; i++) {
+          var a = adj[i];
+          if (a.sessionKey ? a.sessionKey === se.key : (a.date === s && a.courseId === se.courseId && (!a.start || a.start === se.start))) { se.adjust = a; break; }
+        }
+      });
+      adj.forEach(function (a) {
+        if (a.makeupDate === s && validDate(a.makeupDate) && a.makeupStart)
+          out.push({ key: s + '|a' + a.id, date: s, start: a.makeupStart, end: a.makeupEnd || a.makeupStart, courseId: a.courseId, room: a.makeupRoom || '',
+            kind: 'Make-up (for a cancelled class)', adjustId: a.id, reason: 'Make-up for ' + short(a.date) });
+      });
+    }
     out.sort(function (a, b) { return (minutes(a.start) || 0) - (minutes(b.start) || 0); });
     return out;
   }
 
+  /* What else occupies you on a date (not classes): leave, exam / invigilation duty, meetings, events,
+     conferences, timed academic-schedule entries. allDay = the whole day is taken. */
+  function busyBlocks(data, settings, d) {
+    var out = [];
+    function add(a, b, allDay, title, cat, ref) { out.push({ a: a, b: b, allDay: !!allDay, title: title, cat: cat, ref: ref }); }
+    function tm(t, dflt, a) { var x = minutes(t); return x === null ? (a === null ? null : a + dflt) : x; }
+    function covers(s, e) { return validDate(s) && s <= d && d <= (validDate(e) && e > s ? e : s); }
+    list(data, 'leaves').forEach(function (l) { if (['Cancelled', 'Rejected'].indexOf(l.status) === -1 && covers(l.from, l.to)) add(null, null, true, (l.type || 'Leave') + (l.reason ? ': ' + l.reason : ''), 'leave', { coll: 'leaves', id: l.id }); });
+    list(data, 'examDuties').forEach(function (x) { var a = minutes(x.start); if (x.status !== 'Cancelled' && x.date === d && a !== null) add(a, tm(x.end, 180, a), false, (x.dutyType || 'Exam duty') + (x.exam ? ' — ' + x.exam : ''), 'exam', { coll: 'examDuties', id: x.id }); });
+    list(data, 'meetings').forEach(function (m) {
+      if (m.status === 'Cancelled') return;
+      var onDay = (m.repeat || 'None') !== 'None' ? occurrencesBetween({ date: m.date, repeat: m.repeat, until: m.until }, d, d).length > 0 : m.date === d;
+      var a = minutes(m.time); if (onDay && a !== null) add(a, tm(m.endTime, 60, a), false, meetingTitle(data, m), 'meeting', { coll: 'meetings', id: m.id });
+    });
+    list(data, 'mentorMeetings').forEach(function (m) { var a = minutes(m.time); if (m.status !== 'Cancelled' && m.date === d && a !== null) add(a, a + 60, false, 'Mentoring' + (m.kind ? ' (' + m.kind + ')' : ''), 'mentoring', { coll: 'mentorMeetings', id: m.id }); });
+    list(data, 'events').forEach(function (e) {
+      if (['Cancelled', 'Not attending'].indexOf(e.status) !== -1 || !validDate(e.start)) return;
+      var dur = validDate(e.end) && e.end > e.start ? diffDays(e.start, e.end) : 0, onDay;
+      if ((e.repeat || 'None') !== 'None') onDay = occurrencesBetween({ date: e.start, repeat: e.repeat, until: e.until }, addDays(d, -dur), d).length > 0;
+      else onDay = covers(e.start, e.end);
+      if (!onDay) return;
+      var a = minutes(e.time);
+      if (a !== null) add(a, tm(e.endTime, 120, a), false, e.title, 'event', { coll: 'events', id: e.id });
+      else if (e.location === 'Outside campus') add(null, null, true, e.title + ' (outside campus)', 'event', { coll: 'events', id: e.id });
+    });
+    list(data, 'conferences').forEach(function (c) {
+      if (['Cancelled', 'Not attending', 'Withdrawn', 'Rejected'].indexOf(c.status) !== -1 || !covers(c.start, c.end)) return;
+      if ((c.location || (c.mode === 'Online' ? 'Online' : 'Outside campus')) === 'Outside campus') add(null, null, true, (c.kind || 'Conference') + ': ' + (c.title || c.name || ''), 'conference', { coll: 'conferences', id: c.id });
+    });
+    list(data, 'schedule').forEach(function (e) { var a = minutes(e.start); if (a !== null && covers(e.date, e.endDate)) add(a, tm(e.end, 90, a), false, e.title + (e.category ? ' (' + e.category + ')' : ''), 'academic', { coll: 'schedule', id: e.id }); });
+    return out;
+  }
+  /* Your classes on a date that overlap something in busyBlocks(). Adjusted classes are left out unless asked. */
+  function classClashes(data, settings, d, includeAdjusted) {
+    var blocks = busyBlocks(data, settings, d), out = [];
+    if (!blocks.length) return out;
+    sessionsOn(data, settings, d).forEach(function (se) {
+      if (se.adjust && !includeAdjusted) return;
+      var sa = minutes(se.start), sb = minutes(se.end);
+      var w = blocks.filter(function (b) { return b.allDay || (sa !== null && sb !== null && b.a < sb && sa < b.b); });
+      if (w.length) out.push({ session: se, with: w });
+    });
+    return out;
+  }
   function diaryIndex(data) {
     var idx = {};
     list(data, 'diary').forEach(function (d) { if (d.sessionKey) idx[d.sessionKey] = d; });
@@ -823,6 +898,7 @@ var WD = (function () {
     eachDay(start, today, function (d) {
       sessionsOn(data, settings, d).forEach(function (se) {
         if (idx[se.key]) return;
+        if (se.adjust && se.adjust.type !== 'Conducted online') return;
         if (d === today && (nowMinutes === undefined || nowMinutes === null || (minutes(se.end) || 0) > nowMinutes)) return;
         out.push(se);
       });
@@ -985,8 +1061,22 @@ var WD = (function () {
         });
       });
     }
+    // classes that clash with a meeting / duty / event / leave and have no adjustment recorded yet
+    if (on('adjust')) {
+      var aS = ignoreLead ? from : (from > today ? from : today), aE = ignoreLead ? to : addDays(today, R.adjust.lead);
+      if (aE > to) aE = to;
+      var dIdx = diaryIndex(data);
+      if (diffDays(aS, aE) <= 120) eachDay(aS, aE, function (d) {
+        classClashes(data, settings, d).forEach(function (c) {
+          if (dIdx[c.session.key]) return;
+          items.push({ date: d, time: c.session.start, end: c.session.end, cat: 'adjust', title: 'Class adjustment needed: ' + cname(c.session.courseId),
+            detail: short(d) + ' ' + c.session.start + '–' + c.session.end + ' clashes with ' + c.with.map(function (w) { return w.title; }).join(', ') + ' — record a substitution, swap, make-up or skip',
+            ref: { coll: 'classAdjust', id: 'new:' + c.session.key }, overdue: false });
+        });
+      });
+    }
     // academic calendar
-    list(data, 'schedule').forEach(function (e) { pushSpan('academic', e.date, e.endDate, '', e.title, e.category + (e.endDate && e.endDate > e.date ? ' (till ' + short(e.endDate) + ')' : ''), { coll: 'schedule', id: e.id }); });
+    list(data, 'schedule').forEach(function (e) { pushSpan('academic', e.date, e.endDate, e.start || '', e.title, e.category + (e.endDate && e.endDate > e.date ? ' (till ' + short(e.endDate) + ')' : ''), { coll: 'schedule', id: e.id }); });
     list(data, 'holidays').forEach(function (h) { pushSpan('academic', h.date, h.endDate, '', 'Holiday: ' + h.name, h.endDate && h.endDate > h.date ? 'till ' + short(h.endDate) : '', { coll: 'holidays', id: h.id }); });
     list(data, 'semesters').forEach(function (s) {
       push('academic', s.start, '', s.name + ' begins', '', { coll: 'semesters', id: s.id }, false);
@@ -1206,7 +1296,7 @@ var WD = (function () {
         if (['Cancelled', 'Rejected'].indexOf(l.status) !== -1 || !validDate(l.from)) return;
         var to = validDate(l.to) ? l.to : l.from;
         if (to < today || l.from > addDays(today, 21) || String(l.substitution || '').trim()) return;
-        var n = 0; for (var d = l.from > today ? l.from : today; d <= to; d = addDays(d, 1)) n += sessionsOn(data, settings, d).length;
+        var n = 0; for (var d = l.from > today ? l.from : today; d <= to; d = addDays(d, 1)) n += sessionsOn(data, settings, d).filter(function (se) { return !se.adjust; }).length;
         if (n) out.push({ cat: 'leave', title: n + ' class' + (n > 1 ? 'es' : '') + ' fall during your ' + (l.type || 'leave') + ' (' + short(l.from) + (to !== l.from ? '–' + short(to) : '') + ')', detail: 'Arrange a substitution or plan make-up classes, then note it on the leave record', ref: { coll: 'leaves', id: l.id } });
       });
     }
@@ -1246,7 +1336,7 @@ var WD = (function () {
     validDate: validDate, inRange: inRange, minutes: minutes, hoursBetween: hoursBetween, eachDay: eachDay,
     mergeSettings: mergeSettings, list: list, byId: byId,
     semesterFor: semesterFor, holidayOn: holidayOn, eventsOn: eventsOn, dayStatus: dayStatus, dayKeyFor: dayKeyFor,
-    sessionsOn: sessionsOn, diaryIndex: diaryIndex, pendingDiary: pendingDiary, resetCache: resetCache,
+    sessionsOn: sessionsOn, busyBlocks: busyBlocks, classClashes: classClashes, diaryIndex: diaryIndex, pendingDiary: pendingDiary, resetCache: resetCache,
     parseUnits: parseUnits, entryHours: entryHours, courseCoverage: courseCoverage,
     nextOccurrence: nextOccurrence, meetingTitle: meetingTitle, hasSession: hasSession, leaveDays: leaveDays, occurrencesBetween: occurrencesBetween, linkTarget: linkTarget, linkName: linkName, buildAgenda: buildAgenda, nudges: nudges
   };
@@ -1282,6 +1372,8 @@ const STANDARD_OFFICES = p => [
   ['u-othercentres', 'Other centres', 'Centre'],
   ['u-exam', 'Examination office (COE)', 'Examination office']
 ];
+const SCHEDULE_CATS = ['CIA-I','CIA-II','CIA-III / other internal assessment','CIA / Internal assessment','Mid-semester exam','End-semester exam','Practical exam','Invigilation (department / school)','Viva / project review','Results','Registration / Admission','Orientation / Induction','Department event (in campus)','Institutional event (in campus)','Fest / Event','Meeting','Deadline','Other'];
+const ADJ_TYPES = ['Substituted by a colleague','Swapped with a colleague','Rescheduled (make-up class)','Combined with another section','Conducted online','Assignment / self-study given','Skipped — not held'];
 const DAY_OPTIONS = () => state.settings.timetable.mode === 'dayorder'
   ? Array.from({length: +state.settings.timetable.dayOrders || 6}, (_, i) => 'D' + (i + 1))
   : ['Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1323,15 +1415,20 @@ const SCHEMA = {
   schedule: { label:'Academic schedule', one:'schedule entry',
     fields:[
       {k:'title', label:'Entry', type:'text', req:true, ph:'CIA-1 week, Orientation, Results…'},
-      {k:'category', label:'Category', type:'select', opts:['CIA / Internal assessment','Mid-semester exam','End-semester exam','Practical exam','Results','Registration / Admission','Orientation / Induction','Fest / Event','Meeting','Deadline','Other'], def:'Other'},
+      {k:'category', label:'Category', type:'select', opts:SCHEDULE_CATS, def:'Other'},
       {k:'date', label:'Date', type:'date', req:true},
       {k:'endDate', label:'Till (optional)', type:'date'},
+      {k:'start', label:'From (time, optional)', type:'time', help:'Give a time for invigilation or a practical exam slot — clashes with your classes are then checked.'},
+      {k:'end', label:'To (time)', type:'time'},
+      {k:'courseId', label:'Course (optional)', type:'ref', ref:'courses'},
+      {k:'venue', label:'Venue / hall', type:'text'},
       {k:'suspendsClasses', label:'Regular classes suspended?', type:'select', opts:['No','Yes'], def:'No', help:'Choose Yes for exam weeks, fests etc. — the timetable will skip these days.'},
       {k:'followsDay', label:'This day follows timetable of', type:'select', opts:()=>['', ...DAY_OPTIONS()], help:'Use for “Saturday follows Monday’s timetable” type circulars.'},
+      {k:'adjustment', label:'Adjustments / arrangements (if it clashes with other work)', type:'textarea', full:true},
       {k:'notes', label:'Notes', type:'textarea'}
 ,
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
-    ], cols:['date','endDate','title','category','suspendsClasses'], sort:['date','asc'] },
+    ], cols:['date','endDate','schedTime','title','category','suspendsClasses'], sort:['date','asc'] },
 
   holidays: { label:'Holidays', one:'holiday',
     fields:[
@@ -1384,6 +1481,26 @@ const SCHEMA = {
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','start','end','courseId','kind','room'], sort:['date','desc'] },
 
+  classAdjust: { label:'Class adjustments', one:'class adjustment',
+    fields:[
+      {k:'date', label:'Class date', type:'date', req:true},
+      {k:'courseId', label:'Course', type:'ref', ref:'courses', req:true},
+      {k:'start', label:'Class from', type:'time'},
+      {k:'end', label:'Class to', type:'time'},
+      {k:'type', label:'Adjustment', type:'select', opts:ADJ_TYPES, def:'Substituted by a colleague'},
+      {k:'colleague', label:'Colleague (substitute / swap)', type:'text'},
+      {k:'reason', label:'Because of', type:'select', opts:['Meeting','Event','Exam / invigilation duty','CIA / practical exam','Leave / OD','Holiday / declared off','Other'], def:'Meeting'},
+      {k:'clashWith', label:'Clashed with', type:'text', full:true},
+      {k:'makeupDate', label:'Make-up class on', type:'date', help:'For a rescheduled class: it is added to your timetable on this date and reminded for the work diary.'},
+      {k:'makeupStart', label:'Make-up from', type:'time'},
+      {k:'makeupEnd', label:'Make-up to', type:'time'},
+      {k:'makeupRoom', label:'Make-up room', type:'text'},
+      {k:'informed', label:'Students / HoD informed?', type:'select', opts:['','Yes','No'], def:''},
+      {k:'link', label:'Linked to (event, meeting…)', type:'parent', full:true},
+      {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['date','start','courseId','type','colleague','makeupDate','clashWith'], sort:['date','desc'] },
+
   diary: { label:'Work diary', one:'diary entry',
     fields:[
       {k:'date', label:'Date', type:'date', req:true},
@@ -1409,11 +1526,13 @@ const SCHEMA = {
       {k:'start', label:'From', type:'time'},
       {k:'end', label:'To', type:'time'},
       {k:'dutyType', label:'Duty', type:'select', opts:['Invigilation','Relief invigilation','Squad / flying squad','Chief / Deputy superintendent','Practical examiner (internal)','Practical examiner (external)','Viva-voce','Question paper setting','Question paper scrutiny','Exam office duty','Other'], def:'Invigilation'},
-      {k:'exam', label:'Exam', type:'text', ph:'End Semester Exam — Odd 2026'},
+      {k:'assignedBy', label:'Assigned by', type:'select', opts:['Examination office (COE)','Department','School','Other'], def:'Examination office (COE)'},
+      {k:'exam', label:'Exam', type:'text', ph:'End Semester Exam — Odd 2026 · CIA-I · Practical exam'},
       {k:'venue', label:'Venue / block / room', type:'text'},
       {k:'status', label:'Status', type:'select', opts:['Assigned','Completed','Cancelled'], def:'Assigned'},
       {k:'notes', label:'Notes', type:'textarea'}
 ,
+      {k:'adjustment', label:'Adjustments / arrangements (if it clashes with other work)', type:'textarea', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','start','dutyType','exam','venue','status'], sort:['date','asc'] },
 
@@ -1557,6 +1676,7 @@ const SCHEMA = {
       {k:'followUp', label:'Follow-up on', type:'date'},
       {k:'followUpDone', label:'Follow-up done', type:'select', opts:['','Yes']}
 ,
+      {k:'adjustment', label:'Adjustments / arrangements (if it clashes with other work)', type:'textarea', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','time','kind','menteeIds','status','followUp'], sort:['date','desc'] },
 
@@ -1625,6 +1745,7 @@ const SCHEMA = {
       {k:'link', label:'Event link / certificate', type:'url'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
 ,
+      {k:'adjustment', label:'Adjustments / arrangements (if it clashes with other work)', type:'textarea', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['start','title','kind','role','venue','status'], sort:['start','desc'] },
 
@@ -1728,7 +1849,8 @@ const SCHEMA = {
       {k:'role', label:'My role', type:'select', opts:['Participant','In-charge / coordinator','Organiser / convener','Resource person','Speaker / presenter','Judge / jury','Committee member','Volunteer / support','Attending as delegate'], def:'Participant'},
       {k:'start', label:'From (first date)', type:'date', req:true},
       {k:'end', label:'To', type:'date'},
-      {k:'time', label:'Time', type:'time'},
+      {k:'time', label:'From (time)', type:'time'},
+      {k:'endTime', label:'To (time)', type:'time'},
       {k:'repeat', label:'Repeats', type:'select', opts:['None','Weekly','Fortnightly','Monthly','Quarterly','Every semester','Yearly'], def:'None', help:'For events held again and again — e.g. a monthly seminar series or the annual Science Day.'},
       {k:'until', label:'Repeats until', type:'date'},
       {k:'organiser', label:'Organised by', type:'text', ph:'Department, IQAC, Centre for Research, external body…'},
@@ -1741,6 +1863,7 @@ const SCHEMA = {
       {k:'sessions', label:'Session records — minutes / notes for each time it is held', type:'sessions', full:true},
       {k:'outcome', label:'Outcome / report / certificate details', type:'textarea', full:true},
       {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'adjustment', label:'Adjustments / arrangements (if it clashes with other work)', type:'textarea', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['start','title','category','role','venue','linkName','status'], sort:['start','asc'] },
 
@@ -1794,7 +1917,8 @@ const SCHEMA = {
       {k:'link', label:'Linked to (responsibility, committee, event, project, class…)', type:'parent', full:true, help:'Connects this item to the work it belongs to. It then shows up on that record too.'},
       {k:'title', label:'Subject', type:'text', ph:'Budget review, NAAC preparation, syllabus revision…'},
       {k:'date', label:'Date (first date if it repeats)', type:'date', req:true},
-      {k:'time', label:'Time', type:'time'},
+      {k:'time', label:'From (time)', type:'time'},
+      {k:'endTime', label:'To (time)', type:'time'},
       {k:'repeat', label:'Repeats', type:'select', opts:['None','Weekly','Fortnightly','Monthly','Quarterly','Every semester','Yearly'], def:'None', help:'For regular meetings such as a monthly IQAC or weekly group meeting. Record each date’s minutes below.'},
       {k:'until', label:'Repeats until', type:'date'},
       {k:'venue', label:'Venue / link', type:'text'},
@@ -1803,6 +1927,7 @@ const SCHEMA = {
       {k:'minutes', label:'Minutes / decisions', type:'textarea', full:true, help:'For a one-off meeting. A repeating meeting keeps its minutes date by date below.'},
       {k:'sessions', label:'Minutes for each meeting date (repeating meetings)', type:'sessions', full:true}
 ,
+      {k:'adjustment', label:'Adjustments / arrangements (if it clashes with other work)', type:'textarea', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','time','meetingName','linkName','venue','minutesState','status'], sort:['date','desc'] },
 
@@ -1842,7 +1967,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -1904,7 +2029,7 @@ function toast(msg, bad, action){
 }
 function chip(status){ if(!status) return ''; return `<span class="chip ${STATUS_TONE[status] || ''}">${esc(status)}</span>`; }
 function catDot(c){ return `<span class="cat" style="color:var(--c-${c})"><i style="background:var(--c-${c})"></i>${esc(CAT_SHORT[c] || c)}</span>`; }
-const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending', achievement:'Course / certificate' };
+const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending', achievement:'Course / certificate', adjust:'Class adjustment' };
 function bar(pct, tone){ pct = Math.max(0, Math.min(100, pct || 0)); return `<div class="bar ${tone || ''}"><i style="width:${pct}%"></i></div>`; }
 async function sha(s){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -2277,7 +2402,7 @@ async function showInstallHelp(){
 /* ============================ SHELL ============================ */
 const NAV = [
   ['dashboard','Dashboard'], ['notes','Notepad'], ['calendar','Calendar'], ['events','Events'], ['actions','Action items'], ['reminders','Reminders'], ['agenda','Alerts'], ['weekReview','Weekly review'],
-  { g:'Teaching', items:[['academic','Academic calendar'],['timetable','Timetable'],['diary','Work diary'],['courses','Courses'],['assessments','Marks']] },
+  { g:'Teaching', items:[['academic','Academic calendar'],['timetable','Timetable'],['diary','Work diary'],['classAdjust','Class adjustments'],['courses','Courses'],['assessments','Marks']] },
   { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations']] },
   { g:'Students', items:[['classTeacher','Class teacher'],['mentees','Mentees'],['mentorMeetings','Mentoring meetings']] },
   { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
@@ -2286,7 +2411,7 @@ const NAV = [
   { g:'Profile', items:[['achievements','Achievements']] },
   ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', offices:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', classAdjust:'adjust', offices:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
 const NAV_ICON = {
   dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
   calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
@@ -2613,17 +2738,117 @@ function certificateFrom(coll, id){
 }
 function addActionFrom(src, link){ closeModal(); editRecord('actions', null, { source: src, link: link || '', due: today() }); }
 
+/* ---------- "what else is on this date" in every dated form ---------- */
+// [first date, last date, from time, to time, default length in minutes when no "to" time]
+const DATE_SPEC = {
+  events: ['start', 'end', 'time', 'endTime', 120], meetings: ['date', null, 'time', 'endTime', 60], examDuties: ['date', null, 'start', 'end', 180],
+  leaves: ['from', 'to', null, null], conferences: ['start', 'end', null, null], schedule: ['date', 'endDate', 'start', 'end', 90],
+  extraClasses: ['date', null, 'start', 'end', 60], mentorMeetings: ['date', null, 'time', null, 60], actions: ['due', null, 'time', null, 30],
+  reminders: ['date', null, 'time', null, 30], classAdjust: ['makeupDate', null, 'makeupStart', 'makeupEnd', 60], diary: ['date', null, 'start', 'end', 60]
+};
+function recTitle(coll, r){ return coll === 'meetings' ? WD.meetingTitle(state.data, r) : coll === 'examDuties' ? (r.dutyType || 'Exam duty') + (r.exam ? ' — ' + r.exam : '') : coll === 'leaves' ? (r.type || 'Leave') : (r.title || r.name || r.reason || SCHEMA[coll].one); }
+function specRange(coll, r){
+  const sp = DATE_SPEC[coll]; if(!sp || !WD.validDate(r[sp[0]])) return null;
+  const d1 = r[sp[0]], d2 = sp[1] && WD.validDate(r[sp[1]]) && r[sp[1]] > d1 ? r[sp[1]] : d1;
+  const a = sp[2] ? WD.minutes(r[sp[2]]) : null;
+  const b = a === null ? null : (sp[3] && WD.minutes(r[sp[3]]) !== null ? WD.minutes(r[sp[3]]) : a + (sp[4] || 60));
+  const allDay = coll === 'leaves' || (coll === 'conferences' && (r.location || (r.mode === 'Online' ? 'Online' : 'Outside campus')) === 'Outside campus') || (coll === 'events' && a === null && r.location === 'Outside campus');
+  return { d1, d2: WD.diffDays(d1, d2) > 13 ? WD.addDays(d1, 13) : d2, a, b, allDay };
+}
+/* your classes that this record (as it would be saved) overlaps */
+function ownClassClashes(coll, r){
+  if(['diary','extraClasses','classAdjust','actions','reminders'].includes(coll)) return [];
+  const g = specRange(coll, r); if(!g || (!g.allDay && g.a === null)) return [];
+  const out = [];
+  for(let d = g.d1; d <= g.d2; d = WD.addDays(d, 1)) WD.sessionsOn(state.data, state.settings, d).forEach(se => {
+    if(se.adjust) return;
+    const x = WD.minutes(se.start), y = WD.minutes(se.end);
+    if(g.allDay || (x !== null && y !== null && g.a < y && x < g.b)) out.push(se);
+  });
+  return out;
+}
+function dayCheckHtml(coll, r){
+  const g = specRange(coll, r); if(!g) return '';
+  const meId = r.id, days = [];
+  const ov = (x, y) => g.allDay || (g.a !== null && x !== null && y !== null && g.a < y && x < g.b);
+  const skip = new Set(['diary','minutes','reminder','action','evaluation','review','publication','plan','funding','project','achievement','classteacher','adjust']);
+  if(['actions','reminders'].includes(coll)) skip.clear(), ['diary','minutes','adjust'].forEach(k => skip.add(k));
+  const items = WD.buildAgenda(state.data, state.settings, today(), { from: g.d1, to: g.d2, ignoreLead: true, allCats: true, includeOverdue: false, spans: true });
+  let clashCls = [], clashOther = 0;
+  for(let d = g.d1; d <= g.d2; d = WD.addDays(d, 1)){
+    const st = WD.dayStatus(state.data, state.settings, d), rows = [];
+    if(!st.teaching && st.reason && !/Outside semester/.test(st.reason)) rows.push({ t: '', txt: st.reason, cat: 'academic', o: false });
+    WD.sessionsOn(state.data, state.settings, d).forEach(se => {
+      if(coll === 'extraClasses' && se.extraId === meId) return;
+      if(coll === 'diary') return;
+      const x = WD.minutes(se.start), y = WD.minutes(se.end), o = ov(x, y) && !se.adjust;
+      if(o && coll !== 'classAdjust') clashCls.push(se);
+      rows.push({ t: ftime(se.start) + '–' + ftime(se.end), txt: 'Your class: ' + courseName(se.courseId, true) + (se.adjust ? ' — ' + se.adjust.type.toLowerCase() : '') + (se.kind !== 'Regular' ? ' (' + se.kind.split(' (')[0] + ')' : ''), cat: 'classes', o: o || (coll === 'classAdjust' && ov(x, y)) });
+    });
+    items.filter(i => i.date === d && i.cat !== 'classes' && !skip.has(i.cat) && !(i.ref && i.ref.coll === coll && i.ref.id === meId)).forEach(i => {
+      const x = WD.minutes(i.time), y = i.end && WD.minutes(i.end) !== null ? WD.minutes(i.end) : (x === null ? null : x + 60);
+      const allDayOther = /^(On |Holiday)/.test(i.title) || (i.cat === 'conference') || (i.detail || '').includes('Outside campus');
+      const o = (x !== null && ov(x, y)) || (allDayOther && (g.a !== null || g.allDay) && i.cat !== 'academic') || (g.allDay && x !== null);
+      if(o) clashOther++;
+      rows.push({ t: i.time ? ftime(i.time) + (i.end ? '–' + ftime(i.end) : '') : 'All day', txt: (CAT_SHORT[i.cat] || '') + ': ' + i.title, cat: i.cat, o });
+    });
+    days.push({ d, rows });
+  }
+  const any = days.some(x => x.rows.length);
+  const head = g.d1 === g.d2 ? 'Also on ' + fdate(g.d1, 'dow') : `Also between ${fdate(g.d1, 'short')} and ${fdate(g.d2, 'short')}`;
+  if(!any) return `<div class="daychk"><h4>${head}</h4><div class="faint" style="font-size:13px">Nothing else on ${g.d1 === g.d2 ? 'this date' : 'these dates'} — no classes, events, meetings or duties.</div></div>`;
+  const body = days.filter(x => x.rows.length).map(x => (g.d1 !== g.d2 ? `<div class="dd">${fdate(x.d, 'dow')}</div>` : '') + x.rows.sort((p, q) => (p.t || '') < (q.t || '') ? -1 : 1).map(rw => `<div class="dc-it ${rw.o ? 'dc-ov' : ''}"><span class="dc-tm">${esc(rw.t)}</span><span class="dc-dot" style="background:var(--c-${rw.cat})"></span><span>${esc(rw.txt)}${rw.o ? ' — overlaps' : ''}</span></div>`).join('')).join('');
+  const uniq = [...new Map(clashCls.map(c => [c.key, c])).values()];
+  const warn = uniq.length ? `<div class="warn"><b>${uniq.length === 1 ? 'One of your classes overlaps' : uniq.length + ' of your classes overlap'}.</b> Note the arrangement in “Adjustments / arrangements”, and record each class adjustment (substitution, swap, make-up or skipped) — you will be reminded until it is recorded.</div>
+    <div class="acts">${uniq.slice(0, 6).map(c => `<button type="button" class="btn ghost sm" onclick="adjustFromForm('${coll}','${c.key}')">Adjust ${esc(courseName(c.courseId, true))} · ${fdate(c.date, 'short')} ${ftime(c.start)}</button>`).join('')}</div>`
+    : clashOther ? `<div class="warn">This overlaps other work shown in red — note the arrangement in “Adjustments / arrangements”.</div>` : '';
+  return `<div class="daychk"><h4>${head}</h4>${body}${warn}</div>`;
+}
+/* the panel sits right under the last date / time field of the form */
+function dayCheckAfter(coll){ const sp = DATE_SPEC[coll]; if(!sp) return null; const keys = sp.slice(0, 4).filter(Boolean); const f = SCHEMA[coll].fields.map(x => x.k); return f.filter(k => keys.includes(k)).pop() || null; }
+function refreshDayCheck(coll){
+  const box = $('#dayCheck'), form = $('#recForm'); if(!box || !form) return;
+  const r = readForm(coll, form, modalState ? modalState.base : {}); r.id = modalState && modalState.id;
+  box.innerHTML = dayCheckHtml(coll, r);
+}
+/* new adjustment for a class; called from alerts, the diary, the dashboard and from a clashing form */
+function newAdjustment(key, why){
+  const se = sessionFromKey(key); if(!se) return toast('That class is no longer in the timetable.', true);
+  if(se.adjust) return editRecord('classAdjust', se.adjust.id);
+  const cl = WD.classClashes(state.data, state.settings, se.date, true).find(c => c.session.key === key);
+  const w = why || (cl ? cl.with.map(b => b.title).join(', ') : '');
+  const cat = cl && cl.with[0] ? cl.with[0].cat : '';
+  const reason = { meeting:'Meeting', event:'Event', exam:'Exam / invigilation duty', leave:'Leave / OD', conference:'Event', academic:'CIA / practical exam', mentoring:'Meeting' }[cat] || (/leave|od\b/i.test(w) ? 'Leave / OD' : /meeting/i.test(w) ? 'Meeting' : /duty|invigil/i.test(w) ? 'Exam / invigilation duty' : 'Other');
+  const ref = cl && cl.with[0] && cl.with[0].ref && ['events','meetings'].includes(cl.with[0].ref.coll) ? cl.with[0].ref.coll + ':' + cl.with[0].ref.id : '';
+  editRecord('classAdjust', null, { sessionKey: key, date: se.date, courseId: se.courseId, start: se.start, end: se.end, clashWith: w, reason, link: ref });
+}
+/* from inside another form: save that record first (so nothing typed is lost), then open the adjustment */
+async function adjustFromForm(coll, key){
+  const form = $('#recForm'); if(!form) return newAdjustment(key);
+  const out = readForm(coll, form, modalState.base);
+  const err = validate(coll, out);
+  if(err){ $('#formErr').innerHTML = `<div class="err">${esc(err)} — fill this in first, then record the adjustment.</div>`; return; }
+  const saved = await store.upsert(coll, out);
+  closeModal();
+  newAdjustment(key, (SCHEMA[coll].one[0].toUpperCase() + SCHEMA[coll].one.slice(1)) + ': ' + recTitle(coll, saved));
+}
 function editRecord(coll, id, preset){
   const sch = SCHEMA[coll];
   const existing = id ? WD.byId(state.data, coll, id) : null;
   const rec = Object.assign({}, existing || {}, preset || {});
   if(coll === 'meetings' && rec.committeeId && !rec.kind) rec.kind = 'Committee meeting'; // meetings saved before types existed
   openModal(`<div class="mh"><h2>${existing ? 'Edit' : 'Add'} ${esc(sch.one)}</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
-    <form id="recForm" novalidate><div class="mb"><div id="formErr"></div><div class="fg">${sch.fields.map(f => fieldHtml(coll, f, rec)).join('')}</div>${existing && LINKABLE_PARENTS.includes(coll) ? connectedPanel(coll, id) : ''}${existing && (coll === 'students' || coll === 'mentees') ? studentHistory(coll, existing) : ''}</div>
+    <form id="recForm" novalidate><div class="mb"><div id="formErr"></div><div class="fg">${sch.fields.map(f => fieldHtml(coll, f, rec) + (f.k === dayCheckAfter(coll) ? '<div id="dayCheck" style="grid-column:1/-1"></div>' : '')).join('')}</div>${existing && LINKABLE_PARENTS.includes(coll) ? connectedPanel(coll, id) : ''}${existing && (coll === 'students' || coll === 'mentees') ? studentHistory(coll, existing) : ''}</div>
     <div class="mf"><div class="left">${existing ? `<button type="button" class="btn danger sm" onclick="confirmDelete('${coll}','${id}')">Delete</button>` : ''}${FORM_EXTRAS[coll] ? FORM_EXTRAS[coll](rec) : ''}</div>
     <button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" type="submit">Save</button></div></form>`);
   modalState = { coll, id, base: existing || {} };
   const form = $('#recForm');
+  if(DATE_SPEC[coll]){
+    const sp = DATE_SPEC[coll];
+    sp.slice(0, 4).filter(Boolean).forEach(k => { if(form.elements[k]) form.elements[k].addEventListener('change', () => refreshDayCheck(coll)); });
+    ['location','mode','repeat','until'].forEach(k => { if(form.elements[k]) form.elements[k].addEventListener('change', () => refreshDayCheck(coll)); });
+    refreshDayCheck(coll);
+  }
   // dependent fields
   if(coll === 'diary' || coll === 'slots'){
     const cf = form.elements.courseId, sf = form.elements.semesterId;
@@ -2660,9 +2885,18 @@ function editRecord(coll, id, preset){
     const err = validate(coll, out);
     if(err){ $('#formErr').innerHTML = `<div class="err">${esc(err)}</div>`; return; }
     if(existing && coll === 'diary' && existing.sessionKey) out.sessionKey = existing.sessionKey;
+    if(coll === 'classAdjust'){
+      const ss = WD.sessionsOn(state.data, state.settings, out.date).filter(x => x.courseId === out.courseId && !x.adjustId);
+      const m = ss.find(x => x.key === out.sessionKey) || ss.find(x => x.start === out.start) || (ss.length === 1 ? ss[0] : null);
+      out.sessionKey = m ? m.key : '';
+      if(m && !out.start){ out.start = m.start; out.end = m.end; }
+    }
     const saved = await store.upsert(coll, out);
     if(preset && preset._fromNote) markNoteFiled(preset._fromNote, coll, saved.id);
-    closeModal(); toast(`${sch.one[0].toUpperCase() + sch.one.slice(1)} saved`);
+    closeModal();
+    const hit = DATE_SPEC[coll] && coll !== 'classAdjust' ? ownClassClashes(coll, saved)[0] : null;
+    if(hit) toast(`Saved — it clashes with your class ${courseName(hit.courseId, true)} (${fdate(hit.date, 'short')} ${ftime(hit.start)})`, false, { label: 'Record class adjustment', fn: () => newAdjustment(hit.key, (sch.one[0].toUpperCase() + sch.one.slice(1)) + ': ' + recTitle(coll, saved)) });
+    else toast(`${sch.one[0].toUpperCase() + sch.one.slice(1)} saved`);
   });
 }
 function deleteWithUndo(coll, id){
@@ -2758,6 +2992,7 @@ const clearBrokenLinks = guard(async () => {
 
 /* ============================ GENERIC LIST ============================ */
 const VIRTUAL = {
+  schedTime: (coll, r) => r.start ? esc(ftime(r.start) + (r.end ? '–' + ftime(r.end) : '')) : '<span class="faint">—</span>',
   achWhen: (coll, r) => { const d = r.date || r.end; return d ? fdate(d) + (!r.date && r.end ? ' <span class="faint">(ends)</span>' : '') : '<span class="faint">—</span>'; },
   achKind: (coll, r) => esc(String(r.kind || '').replace(/\s*\(.*\)$/, '')),
   certState: (coll, r) => { const has = r.certLink || (r.docs || []).length; if(has) return '<span class="chip ok">On file</span>'; if(['Enrolled','In progress','Exam registered','Nominated / applied','Dropped'].includes(r.status)) return '<span class="faint">—</span>'; return '<span class="chip warn">Add copy</span>'; },
@@ -2798,7 +3033,7 @@ const VIRTUAL = {
   next: (coll, r) => { const d = WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : today()); return d ? `${fdate(d, 'dow')}${r.time ? ' ' + ftime(r.time) : ''}` : ''; },
   done: (coll, r) => (r.repeat || 'None') === 'None' ? (r.done ? chip('Done') : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')">Mark done</button>`) : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')" title="Skip to the next occurrence">Done for this time</button>`
 };
-const VIRTUAL_LABEL = { certState:'Certificate', achWhen:'Date', achKind:'Type', minutesState:'Minutes', leaveDays:'Days', marksDone:'Marks', courseLinks:'Links', linkName:'Linked to', linkedSum:'Connected items', classStrength:'Students', lastFollow:'Last follow-up', studentsNamed:'Students', rowActs:'', remState:'State', projectMoney:'Amount', keyDate:'Key date', callStage:'Next step', filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
+const VIRTUAL_LABEL = { schedTime:'Time', certState:'Certificate', achWhen:'Date', achKind:'Type', minutesState:'Minutes', leaveDays:'Days', marksDone:'Marks', courseLinks:'Links', linkName:'Linked to', linkedSum:'Connected items', classStrength:'Students', lastFollow:'Last follow-up', studentsNamed:'Students', rowActs:'', remState:'State', projectMoney:'Amount', keyDate:'Key date', callStage:'Next step', filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
 function lastMetDate(menteeId){ let d = null; state.data.mentorMeetings.forEach(m => { if(m.status === 'Held' && (m.menteeIds || []).includes(menteeId) && (!d || m.date > d)) d = m.date; }); return d; }
 
 function cellHtml(coll, k, r){
@@ -2927,7 +3162,7 @@ function runSearch(q){
 document.addEventListener('click', e => { const p = $('#searchPanel'); if(p && !e.target.closest('.search')) p.classList.remove('open'); const m = $('#qaMenu'); if(m && !e.target.closest('#qaWrap')) m.remove(); });
 
 /* ============================ QUICK ADD ============================ */
-const QUICK = [['leaves','Leave / OD'],['achievements','Achievement / certificate'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
+const QUICK = [['classAdjust','Class adjustment / skipped class'],['leaves','Leave / OD'],['achievements','Achievement / certificate'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
 function toggleQuickBottom(){
   const m = $('#qaBottom'); if(m) return m.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="menu qa-bottom" id="qaBottom">${QUICK.map(([c, l]) => `<button onclick="$('#qaBottom').remove();editRecord('${c}', null, ${['diary','reminders','holidays','schedule','meetings','classLog'].includes(c) ? `{date:'${today()}'}` : c === 'actions' ? `{due:'${today()}'}` : c === 'leaves' ? `{from:'${today()}'}` : c === 'events' ? `{start:'${today()}'}` : 'null'})">${esc(l)}</button>`).join('')}</div>`);
@@ -2962,7 +3197,7 @@ function agendaItemHtml(i, showDate){
     <div class="tm">${showDate ? `<span style="color:${i.overdue ? 'var(--bad)' : 'inherit'}">${i.date ? (i.overdue ? relDay(i.date) : fdate(i.date, 'short')) : ''}</span>` : (i.time ? ftime(i.time) : '<span class="faint">All day</span>')}</div>
     <div class="bd">${catDot(i.cat)}<div class="tt">${esc(i.title)}</div>${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}</div><div class="rt">${right}</div></div>`;
 }
-function openRef(coll, id){ closeDrawer(); if(coll === 'slots'){ go('timetable'); return; } editRecord(coll, id); }
+function openRef(coll, id){ closeDrawer(); if(coll === 'slots'){ go('timetable'); return; } if(coll === 'classAdjust' && String(id).startsWith('new:')){ newAdjustment(String(id).slice(4)); return; } editRecord(coll, id); }
 function openDrawer(){
   closeDrawer();
   const a = alertsNow();
@@ -3057,6 +3292,7 @@ VIEWS.dashboard = () => {
   const A = alertsNow();
   const pend = A.pend;
   const nextHol = state.data.holidays.filter(h => h.date >= t).sort((a, b) => a.date < b.date ? -1 : 1)[0];
+  const nextAssess = state.data.schedule.filter(e => /CIA|exam|Practical|Invigilation|Viva/i.test(e.category || '') && (e.endDate && e.endDate >= t || e.date >= t)).sort((a, b) => a.date < b.date ? -1 : 1)[0];
 
   // tiles
   const evalLeft = state.data.evaluations.filter(x => !['Completed','Marks uploaded'].includes(x.status)).reduce((a, x) => a + Math.max(0, (+x.scripts || 0) - (+x.done || 0)), 0);
@@ -3109,8 +3345,9 @@ VIEWS.dashboard = () => {
   sessions.forEach(s => {
     const e = didx[s.key];
     const ended = (WD.minutes(s.end) || 0) <= now.mins;
-    todayItems.push({ sort: WD.minutes(s.start), html: `<div class="tli"><div class="tm">${ftime(s.start)}</div><div class="bd">${catDot('classes')}<div class="tt">${esc(courseName(s.courseId))}</div><div class="dt">${[ftime(s.start) + '–' + ftime(s.end), s.room && (/^(room|lab|hall|block|online)/i.test(s.room) ? s.room : 'Room ' + s.room), s.batch && 'Batch ' + s.batch, s.kind !== 'Regular' && s.kind].filter(Boolean).map(esc).join(' · ')}</div></div>
-      <div class="rt">${courseLinks(WD.byId(state.data, 'courses', s.courseId), true)}${e ? `<button class="btn ghost sm" onclick="editRecord('diary','${e.id}')">${e.status === 'Conducted' ? '✓ Logged' : esc(e.status)}</button>` : `<button class="btn ${ended ? '' : 'ghost'} sm" onclick="logSession('${s.key}')">Log</button>`}</div></div>` });
+    todayItems.push({ sort: WD.minutes(s.start), html: `<div class="tli"><div class="tm">${ftime(s.start)}</div><div class="bd">${catDot('classes')}<div class="tt">${esc(courseName(s.courseId))}</div><div class="dt">${[ftime(s.start) + '–' + ftime(s.end), s.room && (/^(room|lab|hall|block|online)/i.test(s.room) ? s.room : 'Room ' + s.room), s.batch && 'Batch ' + s.batch, s.kind !== 'Regular' && s.kind].filter(Boolean).map(esc).join(' · ')}</div>
+      ${s.adjust ? `<div class="adj-note">${esc(s.adjust.type)}${s.adjust.colleague ? ' — ' + esc(s.adjust.colleague) : ''}${s.adjust.makeupDate ? ' · make-up ' + fdate(s.adjust.makeupDate, 'short') : ''}</div>` : ''}</div>
+      <div class="rt">${courseLinks(WD.byId(state.data, 'courses', s.courseId), true)}${e ? `<button class="btn ghost sm" onclick="editRecord('diary','${e.id}')">${e.status === 'Conducted' ? '✓ Logged' : esc(e.status)}</button>` : s.adjust && s.adjust.type !== 'Conducted online' ? `<button class="btn ghost sm" onclick="editRecord('classAdjust','${s.adjust.id}')">Adjusted</button>` : `<button class="btn ${ended ? '' : 'ghost'} sm" onclick="logSession('${s.key}')">Log</button>${ended ? '' : `<button class="btn ghost sm" title="Substitution, swap, make-up or skip" onclick="newAdjustment('${s.key}')">Adjust</button>`}`}</div></div>` });
   });
   A.today.forEach(i => todayItems.push({ sort: WD.minutes(i.time) === null ? 2000 : WD.minutes(i.time), html: agendaItemHtml(i, false) }));
   todayItems.sort((a, b) => a.sort - b.sort);
@@ -3138,6 +3375,7 @@ VIEWS.dashboard = () => {
       <div><div class="k">Week</div><div class="v">${si.week} of ${si.weeks}</div></div>
       <div><div class="k">Teaching days left</div><div class="v">${si.teachLeft}</div></div>
       <div class="prog"><div class="k" style="display:flex;justify-content:space-between"><span>${fdate(si.sem.start, 'short')}</span><span>${si.pct}% · ends ${fdate(si.sem.end, 'short')}</span></div>${bar(si.pct)}</div>
+      ${nextAssess ? `<div class="click" onclick="editRecord('schedule','${nextAssess.id}')" style="cursor:pointer"><div class="k">Next ${esc(/CIA/.test(nextAssess.category) ? 'CIA' : /Invigilation/.test(nextAssess.category) ? 'invigilation' : 'exam')}</div><div class="v">${nextAssess.date < t ? 'On now' : fdate(nextAssess.date, 'short')} <span class="muted" style="font-weight:500">${esc(nextAssess.category === 'CIA / Internal assessment' ? nextAssess.title : nextAssess.category.split(' (')[0])}</span></div></div>` : ''}
       ${nextHol ? `<div><div class="k">Next holiday</div><div class="v">${fdate(nextHol.date, 'short')} <span class="muted" style="font-weight:500">${esc(nextHol.name)}</span></div></div>` : ''}
     </div>` : (state.data.semesters.length ? `<div class="sem-strip"><div class="muted">Not inside a semester today. <button class="linkbtn" onclick="go('academic')">See semesters →</button></div></div>` : '');
 
@@ -3319,7 +3557,7 @@ function ttGrid(cols, mode){
     const crs = WD.byId(state.data, 'courses', s.courseId); const lab = crs && crs.kind === 'Lab';
     const click = mode === 'pattern' ? `editRecord('slots','${s.id}')` : (s.logged ? `editRecord('diary','${s.logged.id}')` : `logSession('${s.key}')`);
     return `<div class="slot ${lab ? 'lab' : ''} ${s.kind !== 'Regular' ? 'extra' : ''} ${s.logged ? 'done' : ''}" style="top:${(a - lo) * PX}px;height:${Math.max(22, (b - a) * PX - 2)}px" onclick="${click}" title="${esc(courseName(s.courseId))}">
-      <b>${esc(courseName(s.courseId, true))}${s.logged ? ' ✓' : ''}</b>${ftime(s.start)}–${ftime(s.end)}${s.room ? ' · ' + esc(s.room) : ''}${s.batch ? ' · ' + esc(s.batch) : ''}${s.kind !== 'Regular' ? `<div>${esc(s.kind.split(' (')[0])}</div>` : ''}</div>`; }).join('')}${layoutOther(c, otherEnd).map(({ i, a, b, clash, left, width }) => {
+      <b>${esc(courseName(s.courseId, true))}${s.logged ? ' ✓' : ''}</b>${ftime(s.start)}–${ftime(s.end)}${s.room ? ' · ' + esc(s.room) : ''}${s.batch ? ' · ' + esc(s.batch) : ''}${s.kind !== 'Regular' ? `<div>${esc(s.kind.split(' (')[0])}</div>` : ''}${s.adjust ? `<div class="adj-note">${esc(s.adjust.type.split(' (')[0])}</div>` : ''}</div>`; }).join('')}${layoutOther(c, otherEnd).map(({ i, a, b, clash, left, width }) => {
     const ref = i.ref ? (i.ref.coll === 'slots' ? '' : `editRecord('${i.ref.coll}','${i.ref.id}')`) : '';
     return `<div class="slot other" style="top:${(a - lo) * PX}px;height:${Math.max(22, (b - a) * PX - 2)}px;left:calc(${left}% + 2px);width:calc(${width}% - 4px);right:auto;--oc:var(--c-${i.cat})" onclick="${ref}" title="${esc(CAT_SHORT[i.cat] + ': ' + i.title + (clash ? ' — overlaps a class' : ''))}"><b>${esc(i.title)}</b>${ftime(i.time)}${i.end ? '–' + ftime(i.end) : ''} · ${esc(CAT_SHORT[i.cat] || '')}${clash ? '<div class="clash">Overlaps a class</div>' : ''}</div>`; }).join('')}</div>`).join('');
   const allDay = c => (c.other || []).filter(i => !i.time);
@@ -3358,7 +3596,7 @@ VIEWS.diary = () => {
   const tb = tabs('diary', [['pending', `Pending (${pend.length})`],['entries','All entries'],['print','Print / export']]);
   let body = '';
   if(tb.cur === 'pending'){
-    body = pend.length ? `<div class="note">These classes were in your timetable (or added as extra classes) but have no diary entry yet. Log each one, or mark it as not held.</div><div class="tw"><table class="t"><thead><tr><th>Date</th><th>Time</th><th>Course</th><th>Type</th><th></th></tr></thead><tbody>${[...pend].reverse().map(s => `<tr onclick="logSession('${s.key}')"><td style="white-space:nowrap">${fdate(s.date, 'dow')}</td><td style="white-space:nowrap">${ftime(s.start)}–${ftime(s.end)}</td><td>${esc(courseName(s.courseId))}${s.room ? ` <span class="faint">· ${esc(s.room)}</span>` : ''}</td><td>${esc(s.kind)}</td><td style="white-space:nowrap;text-align:right"><button class="btn sm" onclick="event.stopPropagation();logSession('${s.key}')">Log</button> <button class="btn ghost sm" onclick="event.stopPropagation();markCancelled('${s.key}')">Not held</button></td></tr>`).join('')}</tbody></table></div>`
+    body = pend.length ? `<div class="note">These classes were in your timetable (or added as extra classes) but have no diary entry yet. Log each one, or mark it as not held.</div><div class="tw"><table class="t"><thead><tr><th>Date</th><th>Time</th><th>Course</th><th>Type</th><th></th></tr></thead><tbody>${[...pend].reverse().map(s => `<tr onclick="logSession('${s.key}')"><td style="white-space:nowrap">${fdate(s.date, 'dow')}</td><td style="white-space:nowrap">${ftime(s.start)}–${ftime(s.end)}</td><td>${esc(courseName(s.courseId))}${s.room ? ` <span class="faint">· ${esc(s.room)}</span>` : ''}</td><td>${esc(s.kind)}</td><td style="white-space:nowrap;text-align:right"><button class="btn sm" onclick="event.stopPropagation();logSession('${s.key}')">Log</button> <button class="btn ghost sm" onclick="event.stopPropagation();markCancelled('${s.key}')">Not held</button> <button class="btn ghost sm" title="Substituted, swapped, rescheduled or skipped" onclick="event.stopPropagation();newAdjustment('${s.key}')">Adjusted…</button></td></tr>`).join('')}</tbody></table></div>`
       : `<div class="card empty"><b>All caught up</b>Every class up to now has a diary entry.</div>`;
   } else if(tb.cur === 'entries') body = listTable('diary', { preset: { date: t } });
   else body = diaryPrintForm();
@@ -4087,6 +4325,7 @@ const RS = {
   mentorMeetings:  { label:'Mentoring meetings', date:r => r.date, title:r => (r.kind || 'Meeting') + ' — ' + menteeNames(r), status:r => r.status, detail:r => [r.agenda, r.notes, r.actions && 'Actions: ' + r.actions].filter(Boolean).join(' | ') },
   classLog:        { label:'Class-teacher follow-ups', date:r => r.date, title:r => ((WD.byId(state.data, 'classGroups', r.classId) || {}).name || 'Class') + ' — ' + (r.kind || ''), status:r => r.status, detail:r => [(r.studentIds || []).map(id => (WD.byId(state.data, 'students', id) || {}).name).filter(Boolean).join(', '), r.summary, r.action && 'Action: ' + r.action].filter(Boolean).join(' | ') },
   achievements:    { label:'Achievements & certificates', date:r => r.date || r.end || r.start, title:r => r.title, status:r => r.status, detail:r => [r.kind, r.issuer, r.level, r.duration, r.grade && 'Grade: ' + r.grade, r.certNo && 'No. ' + r.certNo].filter(Boolean).join(' · ') },
+  classAdjust:     { label:'Class adjustments', date:r => r.date, title:r => courseName(r.courseId, true) + ' — ' + (r.type || ''), status:r => r.type, detail:r => [r.start && r.start + (r.end ? '–' + r.end : ''), r.colleague, r.clashWith && 'clashed with ' + r.clashWith, r.makeupDate && 'make-up ' + fdate(r.makeupDate)].filter(Boolean).join(' · ') },
   leaves:          { label:'Leave & OD', date:r => r.from, title:r => r.type, status:r => r.status, detail:r => [WD.leaveDays(state.data, r, state.settings) + ' day(s)', r.to && r.to !== r.from ? 'till ' + fdate(r.to) : '', r.reason, WD.linkName(state.data, r.link)].filter(Boolean).join(' · ') },
   mentees:         { label:'Mentees', date:() => '', title:r => r.name, status:r => r.active === 'No' ? 'Inactive' : 'Active', detail:r => [r.regNo, r.programme, r.batch].filter(Boolean).join(' · ') },
   plans:           { label:'Research plans', date:r => r.target, title:r => r.title, status:r => r.status, detail:r => { const m = r.milestones || []; return m.length ? m.filter(x => x.done).length + '/' + m.length + ' milestones · ' + m.map(x => (x.done ? '✓ ' : '○ ') + x.text).join('; ') : ''; } },
@@ -4108,7 +4347,7 @@ const RS = {
   holidays:        { label:'Holidays', date:r => r.date, title:r => r.name, status:() => '', detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
   courses:         { label:'Courses', date:() => '', title:r => courseName(r.id), status:r => r.kind, detail:r => [r.classLabel, r.credits && r.credits + ' credits', (WD.byId(state.data, 'semesters', r.semesterId) || {}).name].filter(Boolean).join(' · ') }
 };
-const PERIOD_ORDER = [['Teaching', ['diary','extraClasses']], ['Examinations', ['examDuties','evaluations']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Achievements & certificates', ['achievements']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
+const PERIOD_ORDER = [['Teaching', ['diary','extraClasses','classAdjust']], ['Examinations', ['examDuties','evaluations']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Achievements & certificates', ['achievements']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
 function unitTitle(r){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(r.unit)); return u ? u.title : ''; }
 function menteeNames(r){ const n = (r.menteeIds || []).map(id => (WD.byId(state.data, 'mentees', id) || {}).name).filter(Boolean); return n.length > 4 ? n.length + ' mentees' : n.join(', '); }
 function inPeriod(cfg, r, from, to){
