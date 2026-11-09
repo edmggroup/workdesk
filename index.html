@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-09-4">
-<meta name="app-version" content="1.15">
+<meta name="app-build" content="2026-11-09-7">
+<meta name="app-version" content="1.18">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -599,6 +599,45 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .ovd .dc-it{display:flex;gap:8px;align-items:baseline;font-size:13px;padding:2px 0}
 .ovd .dc-tm{min-width:96px;flex-shrink:0;color:var(--muted);font-size:12px}
 .ovd .dc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;align-self:center}
+
+.ovd .ovd-click{cursor:pointer;border-radius:5px}
+.ovd .ovd-click:hover{background:var(--bg)}
+.ovtr td{padding-top:0!important;background:transparent}
+.t td .ovb{margin:0 6px 0 0;vertical-align:1px}
+.dash-main>.dcol{min-width:0;grid-template-columns:minmax(0,1fr)}
+.ovd .btn{white-space:normal;text-align:left;max-width:100%}
+.ovd{min-width:0;max-width:100%}
+
+:root{--c-repeat:#7A3E9D;--c-repeat-w:#F2E8F8}
+:root[data-theme="dark"]{--c-repeat:#D2A6EC;--c-repeat-w:#2E2038}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-repeat:#D2A6EC;--c-repeat-w:#2E2038}}
+.stu-list{display:flex;flex-direction:column;gap:6px}
+.stu-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) 70px 30px;gap:6px;align-items:center}
+@media (max-width:700px){.stu-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 30px}.stu-row>:nth-child(5){grid-column:span 1}}
+
+:root{--c-makeup:#0F7B5F;--c-makeup-w:#E1F3EC}
+:root[data-theme="dark"]{--c-makeup:#7FD6B6;--c-makeup-w:#173129}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-makeup:#7FD6B6;--c-makeup-w:#173129}}
+
+.cf-card{display:flex;flex-direction:column;gap:10px;cursor:pointer}
+.cf-card.off{opacity:.6}
+.cf-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.cf-kind{font-size:11.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;color:var(--c-conference)}
+.cf-t{font-weight:650;font-size:15px;margin:2px 0}
+.cf-st{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.cf-dates{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.cf-dates{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cf-d{border:1px solid var(--border);border-radius:9px;padding:7px 9px;display:flex;flex-direction:column;gap:1px;background:var(--bg)}
+.cf-d .k{font-size:10.5px;font-weight:650;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.cf-d b{font-size:14px}
+.cf-d .x{font-size:11.5px;color:var(--muted)}
+.cf-d.ok{border-color:color-mix(in srgb,var(--ok) 45%,var(--border))}.cf-d.ok .x{color:var(--ok)}
+.cf-d.soon{border-color:color-mix(in srgb,var(--warn) 60%,var(--border));background:color-mix(in srgb,var(--warn) 8%,var(--bg))}.cf-d.soon .x{color:var(--warn);font-weight:600}
+.cf-d.late{border-color:color-mix(in srgb,var(--bad) 50%,var(--border))}.cf-d.late .x{color:var(--bad);font-weight:600}
+.cf-d.none b{color:var(--muted);font-weight:500}
+.cf-d.ev{border-style:solid;border-width:1px 1px 1px 3px;border-left-color:var(--c-conference)}
+.cf-paper{font-size:13px}
+.cf-links{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
@@ -671,7 +710,7 @@ var WD = (function () {
     'plans', 'publications', 'collaborations', 'conferences', 'reviews', 'contacts', 'metrics',
     'projects',
     'responsibilities', 'committees', 'meetings', 'actions', 'reminders',
-    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements', 'offices', 'classAdjust'
+    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements', 'offices', 'classAdjust', 'repeatExams'
   ];
 
   /* Reminder categories: label, default lead time (days before), default on. */
@@ -694,6 +733,8 @@ var WD = (function () {
     funding:     { label: 'Funding calls — opening, last date, planned submission', lead: 14, on: true },
     classteacher:{ label: 'Class-teacher follow-ups', lead: 1, on: true },
     achievement: { label: 'Courses & certificates — course exam / end date, certificate to download, renewal', lead: 7, on: true },
+    makeup:      { label: 'Make-up classes — owed for classes not held / skipped, and upcoming make-up classes', lead: 2, on: true },
+    repeat:      { label: 'CIA repeats & exceptions — date assured to students, marks deadline, date still to be fixed', lead: 3, on: true },
     adjust:      { label: 'Class adjustments — a class of yours clashes with a meeting, duty, event, CIA / exam or leave', lead: 7, on: true },
     leave:       { label: 'Leave & OD — leave starting, OD not yet applied for outside-campus events', lead: 7, on: true },
     minutes:     { label: 'Minutes / session records pending after a meeting or recurring event', lead: 0, on: true },
@@ -888,6 +929,7 @@ var WD = (function () {
       if (['Cancelled', 'Not attending', 'Withdrawn', 'Rejected'].indexOf(c.status) !== -1 || !covers(c.start, c.end)) return;
       if ((c.location || (c.mode === 'Online' ? 'Online' : 'Outside campus')) === 'Outside campus') add(null, null, true, (c.kind || 'Conference') + ': ' + (c.title || c.name || ''), 'conference', { coll: 'conferences', id: c.id });
     });
+    list(data, 'repeatExams').forEach(function (x) { var a = minutes(x.start); if (a !== null && x.date === d && ['Cancelled', 'Conducted', 'Evaluated', 'Marks submitted'].indexOf(x.status) === -1) add(a, tm(x.end, 60, a), false, (x.kind || 'CIA repeat') + (x.courseId ? ' — ' + ((byId(data, 'courses', x.courseId) || {}).code || '') : ''), 'repeat', { coll: 'repeatExams', id: x.id }); });
     list(data, 'schedule').forEach(function (e) { var a = minutes(e.start); if (a !== null && covers(e.date, e.endDate)) add(a, tm(e.end, 90, a), false, e.title + (e.category ? ' (' + e.category + ')' : ''), 'academic', { coll: 'schedule', id: e.id }); });
     return out;
   }
@@ -1102,6 +1144,44 @@ var WD = (function () {
       push('academic', s.start, '', s.name + ' begins', '', { coll: 'semesters', id: s.id }, false);
       push('academic', s.end, '', s.name + ' ends', '', { coll: 'semesters', id: s.id }, false);
     });
+    // make-up classes: owed for classes that did not happen, and the ones already scheduled
+    if (on('makeup')) {
+      var mkDone = {}, owed = {}, mkFrom = addDays(today, -60);
+      list(data, 'extraClasses').forEach(function (x) { if (/^Make-up/.test(x.kind || '') && x.missedOn) mkDone[x.courseId + '|' + x.missedOn] = 1; });
+      list(data, 'classAdjust').forEach(function (a) { if (validDate(a.makeupDate)) mkDone[a.courseId + '|' + a.date] = 1; });
+      list(data, 'diary').forEach(function (e) {
+        if (['Cancelled', 'Not conducted'].indexOf(e.status) === -1 || e.makeupNeeded === 'No' || !validDate(e.date) || e.date < mkFrom || e.date > today) return;
+        owed[e.courseId + '|' + e.date] = { courseId: e.courseId, date: e.date, why: e.remarks && e.remarks !== 'Class did not take place' ? e.remarks : 'not held' };
+      });
+      list(data, 'classAdjust').forEach(function (a) {
+        if (['Skipped — not held', 'Rescheduled (make-up class)'].indexOf(a.type) === -1 || a.makeupNeeded === 'No' || validDate(a.makeupDate) || !validDate(a.date) || a.date < mkFrom) return;
+        owed[a.courseId + '|' + a.date] = { courseId: a.courseId, date: a.date, why: (a.type === 'Skipped — not held' ? 'skipped' : 'to be rescheduled') + (a.reason ? ' — ' + a.reason.toLowerCase() : '') };
+      });
+      Object.keys(owed).forEach(function (k) {
+        if (mkDone[k]) return; var o = owed[k];
+        push('makeup', o.date, '', 'Make-up class owed: ' + cname(o.courseId), 'Class of ' + short(o.date) + ' ' + o.why + ' — schedule a make-up class', { coll: 'extraClasses', id: 'new:mk:' + o.courseId + '|' + o.date }, true);
+      });
+      list(data, 'extraClasses').forEach(function (x) {
+        if (!/^Make-up/.test(x.kind || '') || !validDate(x.date) || x.date <= today) return;
+        push('makeup', x.date, x.start, 'Make-up class: ' + cname(x.courseId), [x.start && x.end ? x.start + '–' + x.end : '', x.room, x.missedOn ? 'for the class of ' + short(x.missedOn) : '', x.reason].filter(Boolean).join(' · '), { coll: 'extraClasses', id: x.id }, false, { end: x.end || '' });
+      });
+      list(data, 'classAdjust').forEach(function (a) {
+        if (!validDate(a.makeupDate) || a.makeupDate <= today) return;
+        push('makeup', a.makeupDate, a.makeupStart || '', 'Make-up class: ' + cname(a.courseId), [a.makeupStart && a.makeupEnd ? a.makeupStart + '–' + a.makeupEnd : '', a.makeupRoom, 'for the class of ' + short(a.date)].filter(Boolean).join(' · '), { coll: 'classAdjust', id: a.id }, false, { end: a.makeupEnd || '' });
+      });
+    }
+    // CIA repeats, make-up tests and other exceptions allotted to you
+    list(data, 'repeatExams').forEach(function (x) {
+      if (x.status === 'Cancelled') return;
+      var n = (x.students || []).length, pend = (x.students || []).filter(function (p) { return !p.status || p.status === 'Pending'; }).length;
+      var nm = (x.kind || 'CIA repeat') + ': ' + (x.courseId ? cname(x.courseId) : (x.subject || 'course')) + (n ? ' (' + n + ' student' + (n > 1 ? 's' : '') + ')' : '');
+      var ref = { coll: 'repeatExams', id: x.id }, done = ['Conducted', 'Evaluated', 'Marks submitted'].indexOf(x.status) !== -1;
+      if (validDate(x.date)) {
+        if (!done) push('repeat', x.date, x.start || '', nm, [x.start && x.end ? x.start + '–' + x.end : '', x.venue, 'date assured to students', pend && pend < n ? pend + ' still to appear' : ''].filter(Boolean).join(' · '), ref, true, { end: x.end || '' });
+        else if (ignoreLead) push('repeat', x.date, x.start || '', nm, x.status, ref, false, { end: x.end || '' });
+      } else if (validDate(x.allottedOn)) push('repeat', addDays(x.allottedOn, 3), '', 'Fix a date: ' + nm, 'Allotted ' + short(x.allottedOn) + (x.allottedBy ? ' by ' + x.allottedBy : '') + ' — fix the date and inform the students', ref, true);
+      if (validDate(x.deadline) && x.status !== 'Marks submitted') push('repeat', x.deadline, '', 'Submit marks: ' + nm, 'Marks / result due' + (x.allottedBy ? ' to ' + x.allottedBy : ''), ref, true);
+    });
     // exams
     list(data, 'examDuties').forEach(function (x) {
       push('exam', x.date, x.start, (x.dutyType || 'Exam duty') + (x.exam ? ' — ' + x.exam : ''), [x.venue, x.start && x.end ? x.start + '–' + x.end : ''].filter(Boolean).join(' · '), { coll: 'examDuties', id: x.id }, x.status !== 'Completed', { end: x.end || '' });
@@ -1176,8 +1256,10 @@ var WD = (function () {
     list(data, 'conferences').forEach(function (c) {
       if (c.status === 'Cancelled' || c.status === 'Not attending') return;
       var t = c.title || 'Event';
-      push('conference', c.abstractDeadline, '', 'Abstract deadline: ' + t, c.organiser || '', { coll: 'conferences', id: c.id }, false);
-      push('conference', c.registrationDeadline, '', 'Registration deadline: ' + t, c.organiser || '', { coll: 'conferences', id: c.id }, false);
+      var cSt = c.status || 'Planned', cAbs = ['Abstract submitted', 'Registered', 'Attended', 'Presented'].indexOf(cSt) !== -1, cReg = c.feePaid === 'Paid' || c.feePaid === 'Waived / sponsored' || ['Registered', 'Attended', 'Presented'].indexOf(cSt) !== -1;
+      if (!cAbs || ignoreLead) push('conference', c.abstractDeadline, '', 'Abstract deadline: ' + t, c.organiser || '', { coll: 'conferences', id: c.id }, false);
+      if (['Registered', 'Attended', 'Presented'].indexOf(cSt) === -1 || ignoreLead) push('conference', c.fullPaperDeadline, '', 'Full paper deadline: ' + t, c.organiser || '', { coll: 'conferences', id: c.id }, false);
+      if (!cReg || ignoreLead) push('conference', c.registrationDeadline, '', 'Registration / fee deadline: ' + t, [c.regFee, c.organiser].filter(Boolean).join(' · '), { coll: 'conferences', id: c.id }, false);
       var cOut = (c.location || (c.mode === 'Online' ? 'Online' : 'Outside campus')) === 'Outside campus';
       pushSpan('conference', c.start, c.end, '', (c.kind || 'Event') + ': ' + t, [cOut ? 'Outside campus — arrange OD / travel' : '', c.role, c.venue, c.end && c.end > c.start ? 'till ' + short(c.end) : ''].filter(Boolean).join(' · '), { coll: 'conferences', id: c.id }, { lead: cOut && R.outside.on ? Math.max(R.conference.lead, R.outside.lead) : R.conference.lead, outside: cOut });
     });
@@ -1395,6 +1477,9 @@ const STANDARD_OFFICES = p => [
   ['u-exam', 'Examination office (COE)', 'Examination office']
 ];
 const SCHEDULE_CATS = ['CIA-I','CIA-II','CIA-III / other internal assessment','CIA / Internal assessment','Mid-semester exam','End-semester exam','Practical exam','Invigilation (department / school)','Viva / project review','Results','Registration / Admission','Orientation / Induction','Department event (in campus)','Institutional event (in campus)','Fest / Event','Meeting','Deadline','Other'];
+const REPEAT_KINDS = ['CIA-I repeat','CIA-II repeat','CIA-III repeat','Make-up test (absent with reason)','Repeat practical / lab exam','Improvement test','Assignment / project in lieu of CIA','Viva / presentation (exception)','Re-evaluation / re-totalling','Special / supplementary exam','Other exception'];
+const STU_REASONS = ['Medical','On duty (OD)','Absent','Failed — repeat','Improvement','Late admission','Sports / cultural','Other'];
+const STU_STATUS = ['Pending','Appeared','Absent again','Marks entered','Exempted'];
 const ADJ_TYPES = ['Substituted by a colleague','Swapped with a colleague','Rescheduled (make-up class)','Combined with another section','Conducted online','Assignment / self-study given','Skipped — not held'];
 const DAY_OPTIONS = () => state.settings.timetable.mode === 'dayorder'
   ? Array.from({length: +state.settings.timetable.dayOrders || 6}, (_, i) => 'D' + (i + 1))
@@ -1498,10 +1583,32 @@ const SCHEMA = {
       {k:'courseId', label:'Course', type:'ref', ref:'courses', req:true},
       {k:'kind', label:'Type', type:'select', opts:['Extra','Additional','Remedial','Make-up (for a cancelled class)','Substitution (for a colleague)','Bridge course'], def:'Extra'},
       {k:'room', label:'Room / lab', type:'text'},
+      {k:'missedOn', label:'Make-up for the class of (date)', type:'date', help:'For a make-up class: the date of the class that did not happen. It then stops the “make-up owed” alert.'},
       {k:'reason', label:'Reason / note', type:'text', full:true}
 ,
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','start','end','courseId','kind','room'], sort:['date','desc'] },
+
+  repeatExams: { label:'CIA repeats & exceptions', one:'CIA repeat / exception',
+    fields:[
+      {k:'kind', label:'Type', type:'select', opts:REPEAT_KINDS, def:'CIA-I repeat'},
+      {k:'courseId', label:'Course', type:'ref', ref:'courses', optional:true},
+      {k:'subject', label:'Course / paper (if not in your courses)', type:'text'},
+      {k:'classLabel', label:'Class / section', type:'text', ph:'II M.Sc. Physics A'},
+      {k:'allottedOn', label:'Allotted on', type:'date'},
+      {k:'allottedBy', label:'Allotted by', type:'text', ph:'COE, HoD, Dean, class teacher'},
+      {k:'date', label:'Date assured to students', type:'date', help:'Leave empty until fixed — you are reminded to fix it 3 days after it is allotted.'},
+      {k:'start', label:'From (time)', type:'time'},
+      {k:'end', label:'To (time)', type:'time'},
+      {k:'venue', label:'Venue / room', type:'text'},
+      {k:'deadline', label:'Marks to be submitted by', type:'date'},
+      {k:'maxMarks', label:'Maximum marks', type:'number'},
+      {k:'status', label:'Status', type:'select', opts:['Allotted','Date fixed','Question paper ready','Conducted','Evaluated','Marks submitted','Cancelled'], def:'Allotted'},
+      {k:'students', label:'Students', type:'stulist', full:true},
+      {k:'link', label:'Linked to (course, class, responsibility…)', type:'parent', full:true},
+      {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'docs', label:'Documents & links (approval letter, question paper, marks sheet)', type:'links', full:true}
+    ], cols:['date','start','kind','courseId','students','deadline','status'], sort:['date','asc'] },
 
   classAdjust: { label:'Class adjustments', one:'class adjustment',
     fields:[
@@ -1517,6 +1624,7 @@ const SCHEMA = {
       {k:'makeupStart', label:'Make-up from', type:'time'},
       {k:'makeupEnd', label:'Make-up to', type:'time'},
       {k:'makeupRoom', label:'Make-up room', type:'text'},
+      {k:'makeupNeeded', label:'Make-up class needed?', type:'select', opts:['Yes','No'], def:'Yes', help:'For a skipped or rescheduled class: alerted until a make-up date is set here or a make-up extra class is added.'},
       {k:'informed', label:'Students / HoD informed?', type:'select', opts:['','Yes','No'], def:''},
       {k:'link', label:'Linked to (event, meeting…)', type:'parent', full:true},
       {k:'notes', label:'Notes', type:'textarea', full:true},
@@ -1531,6 +1639,7 @@ const SCHEMA = {
       {k:'end', label:'To', type:'time'},
       {k:'kind', label:'Class type', type:'select', opts:['Regular','Extra','Additional','Remedial','Make-up (for a cancelled class)','Substitution (for a colleague)','Bridge course'], def:'Regular'},
       {k:'status', label:'Status', type:'select', opts:['Conducted','Cancelled','Not conducted'], def:'Conducted'},
+      {k:'makeupNeeded', label:'Make-up class needed? (if not held)', type:'select', opts:['Yes','No'], def:'Yes', help:'For a class not held: you are alerted until a make-up class is scheduled. Choose No if none is needed.'},
       {k:'unit', label:'Syllabus unit', type:'unit'},
       {k:'topic', label:'Topic(s) covered', type:'textarea', full:true, rows:3},
       {k:'method', label:'Teaching method', type:'select', opts:['','Lecture','Lecture + discussion','Problem solving','Demonstration','Experiment / lab','Flipped / activity','Presentation','Test / quiz','Revision','ICT / simulation'] },
@@ -1760,11 +1869,14 @@ const SCHEMA = {
       {k:'location', label:'Where', type:'select', opts:['Outside campus','On campus','Online'], def:'Outside campus', help:'Outside-campus events are alerted at least 3 days ahead.'},
       {k:'start', label:'From', type:'date'},
       {k:'end', label:'To', type:'date'},
-      {k:'abstractDeadline', label:'Abstract / paper deadline', type:'date'},
-      {k:'registrationDeadline', label:'Registration deadline', type:'date'},
+      {k:'abstractDeadline', label:'Abstract submission deadline', type:'date'},
+      {k:'fullPaperDeadline', label:'Full paper deadline (if any)', type:'date'},
+      {k:'registrationDeadline', label:'Registration / fee payment deadline', type:'date'},
+      {k:'regFee', label:'Registration fee', type:'text', ph:'₹3,000 · early bird ₹2,500'},
+      {k:'feePaid', label:'Fee', type:'select', opts:['','Not paid yet','Paid','Waived / sponsored'], def:''},
       {k:'status', label:'Status', type:'select', opts:['Planned','Abstract submitted','Registered','Attended','Presented','Not attending','Cancelled'], def:'Planned'},
       {k:'paperTitle', label:'Paper / talk title', type:'text', full:true},
-      {k:'link', label:'Event link / certificate', type:'url'},
+      {k:'link', label:'Event website / link', type:'url'},
       {k:'notes', label:'Notes', type:'textarea', full:true}
 ,
       {k:'adjustment', label:'Adjustments / arrangements (if it clashes with other work)', type:'textarea', full:true},
@@ -2002,7 +2114,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -2064,7 +2176,7 @@ function toast(msg, bad, action){
 }
 function chip(status){ if(!status) return ''; return `<span class="chip ${STATUS_TONE[status] || ''}">${esc(status)}</span>`; }
 function catDot(c){ return `<span class="cat" style="color:var(--c-${c})"><i style="background:var(--c-${c})"></i>${esc(CAT_SHORT[c] || c)}</span>`; }
-const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending', achievement:'Course / certificate', adjust:'Class adjustment' };
+const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending', achievement:'Course / certificate', adjust:'Class adjustment', repeat:'CIA repeat / exception', makeup:'Make-up class' };
 function bar(pct, tone){ pct = Math.max(0, Math.min(100, pct || 0)); return `<div class="bar ${tone || ''}"><i style="width:${pct}%"></i></div>`; }
 async function sha(s){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -2438,7 +2550,7 @@ async function showInstallHelp(){
 const NAV = [
   ['dashboard','Dashboard'], ['notes','Notepad'], ['calendar','Calendar'], ['events','Events'], ['actions','Action items'], ['reminders','Reminders'], ['agenda','Alerts'], ['weekReview','Weekly review'],
   { g:'Teaching', items:[['academic','Academic calendar'],['timetable','Timetable'],['diary','Work diary'],['classAdjust','Class adjustments'],['courses','Courses'],['assessments','Marks']] },
-  { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations']] },
+  { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations'],['repeatExams','CIA repeats & exceptions']] },
   { g:'Students', items:[['classTeacher','Class teacher'],['mentees','Mentees'],['mentorMeetings','Mentoring meetings']] },
   { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
   { g:'Projects & funding', items:[['projects','Projects & grants'],['fundingCalls','Funding calls']] },
@@ -2446,7 +2558,7 @@ const NAV = [
   { g:'Profile', items:[['achievements','Achievements']] },
   ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', classAdjust:'adjust', offices:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_DOT = { repeatExams:'repeat', dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', classAdjust:'adjust', repeatExams:'repeat', offices:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
 const NAV_ICON = {
   dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
   calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
@@ -2532,6 +2644,7 @@ function rerender(){
   if($('#app').style.display === 'none') return;
   cancelAnimationFrame(_rr);
   _rr = requestAnimationFrame(() => {
+    _ovCache = {};
     renderNav(); renderBell();
     const v = VIEWS[state.view] || (SCHEMA[state.view] ? () => listPage(state.view) : VIEWS.dashboard);
     try{ $('#main').innerHTML = v(); }
@@ -2615,6 +2728,14 @@ function fieldHtml(coll, f, rec){
       input = `<select class="inp" id="${id}" name="${f.k}"><option value="">—</option>${units.map(u => `<option value="${u.n}" ${String(u.n) === String(v) ? 'selected' : ''}>${esc(u.title)}</option>`).join('')}</select>${c && !units.length ? `<div class="help">Add syllabus units to this course to track coverage.</div>` : ''}`;
       break;
     }
+    case 'stulist': {
+      const items = Array.isArray(v) ? v : [];
+      input = `<datalist id="stuNames">${state.data.students.map(p => `<option value="${esc(p.name)}">${esc([p.regNo, (WD.byId(state.data, 'classGroups', p.classId) || {}).name].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>
+        <div class="stu-list" id="sl_${f.k}">${items.map(stuRow).join('')}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn ghost sm" onclick="$('#sl_${f.k}').insertAdjacentHTML('beforeend', stuRow({}))">+ Add student</button><button type="button" class="btn ghost sm" onclick="pasteStudents('${f.k}')">Paste a list</button></div>
+        <div class="help">Type a name — your class students are suggested and their register numbers filled in. “Paste a list” takes one student per line (name, register no.).</div>`;
+      break;
+    }
     case 'checklist': {
       const items = Array.isArray(v) ? v : [];
       input = `<div class="ck-list" id="ck_${f.k}">${items.map(ckRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#ck_${f.k}').insertAdjacentHTML('beforeend', ckRow({}))">${esc(f.addLabel || '+ Add milestone')}</button>`;
@@ -2661,6 +2782,19 @@ function fieldHtml(coll, f, rec){
   }
   return `<div class="${f.full || f.type === 'textarea' || f.type === 'multiref' ? 'full' : ''}" data-f="${f.k}">${lab}${input}${help}</div>`;
 }
+function stuRow(m){ return `<div class="stu-row" data-sid="${esc(m.studentId || '')}"><input class="inp" list="stuNames" placeholder="Student name" value="${esc(m.name || '')}" onchange="stuPick(this)"><input class="inp" placeholder="Reg. no." value="${esc(m.regNo || '')}"><select class="inp" title="Reason">${STU_REASONS.map(x => `<option ${x === (m.reason || 'Medical') ? 'selected' : ''}>${x}</option>`).join('')}</select><select class="inp" title="Status">${STU_STATUS.map(x => `<option ${x === (m.status || 'Pending') ? 'selected' : ''}>${x}</option>`).join('')}</select><input class="inp" placeholder="Marks" value="${esc(m.marks || '')}" inputmode="decimal"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
+function stuPick(inp){ const row = inp.closest('.stu-row'), p = state.data.students.find(x => x.name.toLowerCase() === inp.value.trim().toLowerCase()); if(!p) { row.dataset.sid = ''; return; } row.dataset.sid = p.id; const reg = row.querySelectorAll('input')[1]; if(!reg.value) reg.value = p.regNo || ''; }
+function pasteStudents(k){
+  const box = $('#sl_' + k); let ta = $('#slp_' + k);
+  if(ta){ ta.parentNode.remove(); return; }
+  box.insertAdjacentHTML('afterend', `<div style="margin-top:6px"><textarea class="inp" id="slp_${k}" rows="4" placeholder="One student per line: name, register no. (copy two columns from Excel)"></textarea><button type="button" class="btn sm" style="margin-top:6px" onclick="addPastedStudents('${k}')">Add these students</button></div>`);
+  $('#slp_' + k).focus();
+}
+function addPastedStudents(k){
+  const ta = $('#slp_' + k), box = $('#sl_' + k); if(!ta) return;
+  ta.value.split(/\n/).map(l => l.trim()).filter(Boolean).forEach(l => { const [name, regNo] = l.split(/\t|,/).map(x => (x || '').trim()); if(!name) return; const p = state.data.students.find(x => x.name.toLowerCase() === name.toLowerCase() || (regNo && x.regNo === regNo)); box.insertAdjacentHTML('beforeend', stuRow({ name: p ? p.name : name, regNo: regNo || (p && p.regNo) || '', studentId: p ? p.id : '' })); });
+  ta.parentNode.remove();
+}
 function ckRow(m){ return `<div class="ck-row"><input type="checkbox" ${m.done ? 'checked' : ''}><input class="inp" placeholder="Milestone" value="${esc(m.text || '')}"><input class="inp" type="date" value="${esc(m.due || '')}" title="Due"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
 const PARENT_TYPES = [['committees','Committees'],['responsibilities','Responsibilities & in-charges'],['classGroups','Class teacher — my classes'],['offices','Department · School · University · HED · Centres · Exam office'],['events','Events'],['projects','Projects & grants'],['courses','Courses'],['meetings','Meetings']];
 function parentCandidates(pc, rec){
@@ -2705,6 +2839,7 @@ function readForm(coll, form, base){
   const rec = Object.assign({}, base);
   SCHEMA[coll].fields.forEach(f => {
     if(f.type === 'multiref') rec[f.k] = $$(`input[name="${f.k}"]:checked`, form).map(i => i.value);
+    else if(f.type === 'stulist') rec[f.k] = $$(`#sl_${f.k} .stu-row`, form).map(r => { const i = $$('input,select', r); return { name: i[0].value.trim(), regNo: i[1].value.trim(), reason: i[2].value, status: i[3].value, marks: i[4].value.trim(), studentId: r.dataset.sid || '' }; }).filter(m => m.name);
     else if(f.type === 'checklist') rec[f.k] = $$(`#ck_${f.k} .ck-row`, form).map(r => { const i = $$('input', r); return { done: i[0].checked, text: i[1].value.trim(), due: i[2].value }; }).filter(m => m.text);
     else if(f.type === 'sessions') rec[f.k] = $$(`#ss_${f.k} .ss-row`, form).map(r => { const i = $$('input,select,textarea', r); let u = (i[3] && i[3].value || '').trim(); const notes = r.querySelector('textarea').value.trim(); const url = r.querySelector('input[type=url]').value.trim(); return { date: i[0].value, status: i[1].value, notes, url: url && !/^https?:/i.test(url) ? 'https://' + url : url }; }).filter(m => m.date || m.notes).sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1);
     else if(f.type === 'people') rec[f.k] = $$(`#pp_${f.k} .pp-row`, form).map(r => { const i = $$('input,select', r); return { name: i[0].value.trim(), role: i[1].value, institution: i[2].value.trim(), email: i[3].value.trim() }; }).filter(m => m.name);
@@ -2779,7 +2914,7 @@ const DATE_SPEC = {
   events: ['start', 'end', 'time', 'endTime', 120], meetings: ['date', null, 'time', 'endTime', 60], examDuties: ['date', null, 'start', 'end', 180],
   leaves: ['from', 'to', null, null], conferences: ['start', 'end', null, null], schedule: ['date', 'endDate', 'start', 'end', 90],
   extraClasses: ['date', null, 'start', 'end', 60], mentorMeetings: ['date', null, 'time', null, 60], actions: ['due', null, 'time', null, 30],
-  reminders: ['date', null, 'time', null, 30], classAdjust: ['makeupDate', null, 'makeupStart', 'makeupEnd', 60], diary: ['date', null, 'start', 'end', 60]
+  reminders: ['date', null, 'time', null, 30], repeatExams: ['date', null, 'start', 'end', 60], classAdjust: ['makeupDate', null, 'makeupStart', 'makeupEnd', 60], diary: ['date', null, 'start', 'end', 60]
 };
 function recTitle(coll, r){ return coll === 'meetings' ? WD.meetingTitle(state.data, r) : coll === 'examDuties' ? (r.dutyType || 'Exam duty') + (r.exam ? ' — ' + r.exam : '') : coll === 'leaves' ? (r.type || 'Leave') : (r.title || r.name || r.reason || SCHEMA[coll].one); }
 function specRange(coll, r){
@@ -2802,6 +2937,12 @@ function ownClassClashes(coll, r){
   });
   return out;
 }
+/* reminders about something (deadlines, tasks, "apply OD") are not things you are busy at */
+function notBusy(i){
+  if(i.ref && i.ref.sub != null) return true;
+  if(i.cat === 'conference' && i.ref && i.ref.coll === 'conferences'){ const c = WD.byId(state.data, 'conferences', i.ref.id); if(!c || !(c.start <= i.date && i.date <= (c.end || c.start))) return true; }
+  return /^(Apply OD|Registration|Approval awaited|Send the proposal|Abstract|Full paper|Camera|Payment|Event report pending|Session record pending|Minutes pending|Certificate due|Assignment \/ registration due|Renewal due|Course ends)/i.test(i.title || '');
+}
 function dayCheckData(coll, r){
   const g = specRange(coll, r); if(!g) return null;
   const meId = r.id, days = [];
@@ -2818,14 +2959,14 @@ function dayCheckData(coll, r){
       if(coll === 'diary') return;
       const x = WD.minutes(se.start), y = WD.minutes(se.end), o = ov(x, y) && !se.adjust;
       if(o && coll !== 'classAdjust') clashCls.push(se);
-      rows.push({ t: ftime(se.start) + '–' + ftime(se.end), txt: 'Your class: ' + courseName(se.courseId, true) + (se.adjust ? ' — ' + se.adjust.type.toLowerCase() : '') + (se.kind !== 'Regular' ? ' (' + se.kind.split(' (')[0] + ')' : ''), cat: 'classes', o: o || (coll === 'classAdjust' && ov(x, y)) });
+      rows.push({ key: se.key, t: ftime(se.start) + '–' + ftime(se.end), txt: 'Your class: ' + courseName(se.courseId, true) + (se.adjust ? ' — ' + se.adjust.type.toLowerCase() : '') + (se.kind !== 'Regular' ? ' (' + se.kind.split(' (')[0] + ')' : ''), cat: 'classes', o: o || (coll === 'classAdjust' && ov(x, y)) });
     });
-    items.filter(i => i.date === d && i.cat !== 'classes' && !skip.has(i.cat) && !(i.ref && i.ref.coll === coll && i.ref.id === meId)).forEach(i => {
+    items.filter(i => i.date === d && i.cat !== 'classes' && !skip.has(i.cat) && !(i.ref && i.ref.coll === coll && i.ref.id === meId) && !notBusy(i)).forEach(i => {
       const x = WD.minutes(i.time), y = i.end && WD.minutes(i.end) !== null ? WD.minutes(i.end) : (x === null ? null : x + 60);
       const allDayOther = /^(On |Holiday)/.test(i.title) || (i.cat === 'conference') || (i.detail || '').includes('Outside campus');
       const o = (x !== null && ov(x, y)) || (allDayOther && (g.a !== null || g.allDay) && i.cat !== 'academic') || (g.allDay && x !== null);
       if(o) clashOther++;
-      rows.push({ t: i.time ? ftime(i.time) + (i.end ? '–' + ftime(i.end) : '') : 'All day', txt: (CAT_SHORT[i.cat] || '') + ': ' + i.title, cat: i.cat, o });
+      rows.push({ ref: i.ref, occ: i.occurrence || d, t: i.time ? ftime(i.time) + (i.end ? '–' + ftime(i.end) : '') : 'All day', txt: (CAT_SHORT[i.cat] || '') + ': ' + i.title, cat: i.cat, o });
     });
     days.push({ d, rows });
   }
@@ -2994,6 +3135,7 @@ function studentHistory(coll, r){
     ${coll === 'mentees' && !s ? `<div class="faint" style="font-size:12.5px;margin-bottom:6px">Pick this mentee’s class student record above to also see class follow-ups and marks.</div>` : ''}
     ${coll === 'students' && !mentees.length ? `<div class="faint" style="font-size:12.5px;margin-bottom:6px">Not a mentee. <button type="button" class="linkbtn" onclick="closeModal();editRecord('mentees', null, {studentId:'${r.id}', name:'${esc(r.name).replace(/'/g, '&#39;')}', regNo:'${esc(r.regNo || '')}'})">Add as mentee</button></div>` : ''}
     <div class="cn-grid">
+    ${(() => { const nm = String((s ? s.name : r.name) || '').toLowerCase(), reg = (s && s.regNo) || r.regNo || ''; const rx = state.data.repeatExams.filter(x => (x.students || []).some(p => (s && p.studentId === s.id) || (reg && p.regNo === reg) || (nm && p.name.toLowerCase() === nm))); return rx.length ? `<div class="cn-sec"><div class="cn-head"><b>CIA repeats & exceptions</b> <span class="faint">${rx.length}</span></div>${rx.map(x => { const p = x.students.find(p => (s && p.studentId === s.id) || (reg && p.regNo === reg) || p.name.toLowerCase() === nm) || {}; return row(x.date ? fdate(x.date, 'short') : 'no date', esc((x.kind || '') + ' — ' + (x.courseId ? courseName(x.courseId, true) : x.subject || '')), chip(p.status || 'Pending'), `editRecord('repeatExams','${x.id}')`); }).join('')}</div>` : ''; })()}
     <div class="cn-sec"><div class="cn-head"><b>Class follow-ups</b> <span class="faint">${logs.length}</span>${s ? `<button type="button" class="btn ghost sm" onclick="closeModal();editRecord('classLog', null, {classId:'${s.classId}', date:'${today()}', studentIds:['${s.id}'], kind:'Student issue'})">+ Add</button>` : ''}</div>${logs.slice(0, 6).map(l => row(fdate(l.date, 'short'), esc(l.kind + ': ' + String(l.summary || '').slice(0, 60)), chip(l.status), `editRecord('classLog','${l.id}')`)).join('')}</div>
     <div class="cn-sec"><div class="cn-head"><b>Mentoring meetings</b> <span class="faint">${meets.length}</span>${mentees[0] ? `<button type="button" class="btn ghost sm" onclick="closeModal();editRecord('mentorMeetings', null, {menteeIds:['${mentees[0].id}'], date:'${today()}', kind:'Individual'})">+ Add</button>` : ''}</div>${meets.slice(0, 6).map(m => row(fdate(m.date, 'short'), esc((m.kind || 'Meeting') + (m.notes ? ': ' + m.notes.slice(0, 50) : '')), chip(m.status), `editRecord('mentorMeetings','${m.id}')`)).join('')}</div>
     <div class="cn-sec"><div class="cn-head"><b>Marks</b> <span class="faint">${marks.length}</span></div>${marks.slice(0, 8).map(a => { const v = +a.marks[s.id], low = a.pass !== '' && a.pass != null && v < +a.pass; return row(esc(courseName(a.courseId, true)), esc(a.title), `<span style="font-weight:600;${low ? 'color:var(--bad)' : ''}">${v}/${esc(a.max)}</span>`, `openMarks('${a.id}')`); }).join('')}</div>
@@ -3094,6 +3236,7 @@ function cellHtml(coll, k, r){
     case 'parent': { const n = WD.linkName(state.data, v); const tg = WD.linkTarget(state.data, v); return n ? `<button class="linkchip" onclick="event.stopPropagation();editRecord('${tg.coll}','${tg.id}')">${esc(n)}</button>` : '<span class="faint">—</span>'; }
     case 'sessions': { const a = v || []; return a.length ? a.length + ' recorded' : '<span class="faint">—</span>'; }
     case 'people': { const a = v || []; return a.length ? esc(a.map(p => p.name + (p.role ? ' (' + p.role + ')' : '')).join(', ')) : '<span class="faint">—</span>'; }
+    case 'stulist': { const a = v || []; if(!a.length) return '<span class="faint">—</span>'; const pend = a.filter(p => !p.status || p.status === 'Pending').length; return `${a.length} student${a.length > 1 ? 's' : ''}${pend && pend < a.length ? ` · <span style="color:var(--warn)">${pend} pending</span>` : ''}<div class="faint" style="font-size:12px">${esc(a.slice(0, 3).map(p => p.name).join(', ') + (a.length > 3 ? '…' : ''))}</div>`; }
     case 'checklist': { const a = v || []; return a.length ? `${a.filter(x => x.done).length}/${a.length} done` : '<span class="faint">—</span>'; }
     case 'url': return `<a href="${esc(v)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open ↗</a>`;
     case 'email': return `<a href="mailto:${esc(v)}" onclick="event.stopPropagation()">${esc(v)}</a>`;
@@ -3147,7 +3290,9 @@ function listTable(coll, opts){
   if(!state.data[coll].length) return toolbar + `<div class="card empty"><b>No ${esc(sch.label.toLowerCase())} yet</b>${opts.emptyHint || ''}<div style="margin-top:12px"><button class="btn sm" onclick="editRecord('${coll}', null, ${esc(JSON.stringify(opts.preset || null))})">+ Add ${esc(sch.one)}</button></div></div>`;
   const cur = state.sort[coll] || sch.sort || [];
   const head = cols.map(k => { const f = sch.fields.find(x => x.k === k); const l = f ? f.label : (k in VIRTUAL_LABEL ? VIRTUAL_LABEL[k] : k); return `<th onclick="setSort('${coll}','${k}')">${esc(l.replace(/\s*\(.*\)$/, ''))}${cur[0] === k ? (cur[1] === 'asc' ? ' ↑' : ' ↓') : ''}</th>`; }).join('');
-  const body = rows.map(r => `<tr class="${isOverdue(r) ? 'overdue' : ''}" onclick="${opts.onRow ? opts.onRow(r) : `editRecord('${coll}','${r.id}')`}">${cols.map(k => `<td class="${['topic','title','expertise','outcomes','manuscript'].includes(k) ? 'wrap' : ''}">${cellHtml(coll, k, r)}</td>`).join('')}</tr>`).join('');
+  const ovOn = !!DATE_SPEC[coll] && !opts.onRow;
+  const body = rows.map(r => { const ovi = ovOn ? overlapFor(coll, r.id, (r.repeat || 'None') !== 'None' && DATE_SPEC[coll] ? WD.nextOccurrence({ date: r[DATE_SPEC[coll][0]], repeat: r.repeat, until: r.until }, today()) : null) : null, uid = 'ovt_' + coll + '_' + r.id;
+    return `<tr class="${isOverdue(r) ? 'overdue' : ''}" onclick="${opts.onRow ? opts.onRow(r) : `editRecord('${coll}','${r.id}')`}">${cols.map((k, n) => `<td class="${['topic','title','expertise','outcomes','manuscript'].includes(k) ? 'wrap' : ''}">${n === cols.length - 1 && ovi ? `<span style="white-space:nowrap">${overlapBadge(ovi, uid)}</span>` : ''}${cellHtml(coll, k, r)}</td>`).join('')}</tr>${ovi ? overlapDetail(ovi, uid, cols.length) : ''}`; }).join('');
   return toolbar + (rows.length ? `<div class="tw"><table class="t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div><div class="count">${rows.length} of ${state.data[coll].length}</div>` : `<div class="card empty">Nothing matches these filters.</div>`);
 }
 
@@ -3169,6 +3314,7 @@ function rowsForExport(coll, rows){
       else if(f.type === 'links') v = (v || []).map(m => `${m.label ? m.label + ': ' : ''}${m.url}`).join('\n');
       else if(f.type === 'parent') v = WD.linkName(state.data, v);
       else if(f.type === 'sessions') v = (v || []).map(m => `${m.date} (${m.status}): ${m.notes}${m.url ? ' ' + m.url : ''}`).join('\n');
+      else if(f.type === 'stulist') v = (v || []).map(m => [m.name, m.regNo, m.reason, m.status, m.marks].filter(Boolean).join(', ')).join('\n');
       else if(f.type === 'people') v = (v || []).map(m => [m.name, m.role, m.institution, m.email].filter(Boolean).join(', ')).join('\n');
       else if(f.type === 'unit'){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(v)); v = u ? u.title : v; }
       o[f.label] = v == null ? '' : v;
@@ -3203,7 +3349,7 @@ function runSearch(q){
 document.addEventListener('click', e => { const p = $('#searchPanel'); if(p && !e.target.closest('.search')) p.classList.remove('open'); const m = $('#qaMenu'); if(m && !e.target.closest('#qaWrap')) m.remove(); });
 
 /* ============================ QUICK ADD ============================ */
-const QUICK = [['classAdjust','Class adjustment / skipped class'],['leaves','Leave / OD'],['achievements','Achievement / certificate'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
+const QUICK = [['repeatExams','CIA repeat / exception (students)'],['classAdjust','Class adjustment / skipped class'],['leaves','Leave / OD'],['achievements','Achievement / certificate'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
 function toggleQuickBottom(){
   const m = $('#qaBottom'); if(m) return m.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="menu qa-bottom" id="qaBottom">${QUICK.map(([c, l]) => `<button onclick="$('#qaBottom').remove();editRecord('${c}', null, ${['diary','reminders','holidays','schedule','meetings','classLog'].includes(c) ? `{date:'${today()}'}` : c === 'actions' ? `{due:'${today()}'}` : c === 'leaves' ? `{from:'${today()}'}` : c === 'events' ? `{start:'${today()}'}` : 'null'})">${esc(l)}</button>`).join('')}</div>`);
@@ -3235,9 +3381,11 @@ function agendaItemHtml(i, showDate){
   const right = i.ref && i.ref.coll === 'actions' ? `<button class="btn ghost sm" onclick="event.stopPropagation();quickDone('actions','${i.ref.id}')">Done</button>`
     : i.ref && i.ref.coll === 'reminders' ? `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${i.ref.id}')">Done</button>`
     : i.ref && ['meetings','events'].includes(i.ref.coll) && ['meeting','event','minutes'].includes(i.cat) && i.date && i.date <= today() && !/report pending/i.test(i.title) && !attendedOn(i.ref.coll, i.ref.id, i.occurrence || i.date) ? `<button class="btn ghost sm" title="Mark that you attended" onclick="event.stopPropagation();markAttended('${i.ref.coll}','${i.ref.id}','${i.occurrence || i.date}')">Attended</button>` : '';
+  const ovi = i.ref && i.ref.id && !String(i.ref.id).startsWith('new:') && i.date >= today() && !['classes','adjust','minutes','diary'].includes(i.cat) && !(i.spanDay > 1) && !i.ongoing ? overlapFor(i.ref.coll, i.ref.id, i.occurrence || null) : null;
+  const uid = 'ova_' + (i.ref ? i.ref.coll + '_' + i.ref.id : '') + '_' + (i.occurrence || i.date) + '_' + (i.cat || '');
   return `<div class="tli ${click ? 'click' : ''}" ${click ? `onclick="${click}"` : ''}>
     <div class="tm">${showDate ? `<span style="color:${i.overdue ? 'var(--bad)' : 'inherit'}">${i.date ? (i.overdue ? relDay(i.date) : fdate(i.date, 'short')) : ''}</span>` : (i.time ? ftime(i.time) : '<span class="faint">All day</span>')}</div>
-    <div class="bd">${catDot(i.cat)}<div class="tt">${esc(i.title)}</div>${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}</div><div class="rt">${right}</div></div>`;
+    <div class="bd">${catDot(i.cat)}<div class="tt">${esc(i.title)}</div>${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}${overlapDetail(ovi, uid)}</div><div class="rt">${overlapBadge(ovi, uid)}${right}</div></div>`;
 }
 /* "Attended" in one tap: a one-off meeting / event gets status Attended; a repeating one gets a session record for that date */
 function attendedOn(coll, id, d){ const r = WD.byId(state.data, coll, id); if(!r) return true; if((r.repeat || 'None') !== 'None') return (r.sessions || []).some(x => x.date === d && ['Attended','Held'].includes(x.status)); return ['Attended','Held','Completed'].includes(r.status); }
@@ -3252,7 +3400,8 @@ const markAttended = guard(async (coll, id, d) => {
   await store.upsert(coll, upd);
   toast(`Marked as attended — ${fdate(d, 'short')}`, false, { label: coll === 'meetings' ? 'Add minutes' : 'Add notes', fn: () => editRecord(coll, id) });
 });
-function openRef(coll, id){ closeDrawer(); if(coll === 'slots'){ go('timetable'); return; } if(coll === 'classAdjust' && String(id).startsWith('new:')){ newAdjustment(String(id).slice(4)); return; } editRecord(coll, id); }
+function openRef(coll, id){ closeDrawer(); if(coll === 'slots'){ go('timetable'); return; }
+  if(coll === 'extraClasses' && String(id).startsWith('new:mk:')){ const [cid, d] = String(id).slice(7).split('|'); scheduleMakeup(cid, d); return; } if(coll === 'classAdjust' && String(id).startsWith('new:')){ newAdjustment(String(id).slice(4)); return; } editRecord(coll, id); }
 function openDrawer(){
   closeDrawer();
   const a = alertsNow();
@@ -3641,10 +3790,14 @@ function copyLastTopic(){
   form.elements.topic.value = (last.topic ? 'Contd. — ' + last.topic : '');
   if(form.elements.method) form.elements.method.value = last.method || '';
 }
+function scheduleMakeup(courseId, missed){
+  const se = WD.sessionsOn(state.data, state.settings, missed).find(x => x.courseId === courseId) || {};
+  editRecord('extraClasses', null, { courseId, missedOn: missed, kind: 'Make-up (for a cancelled class)', start: se.start || '', end: se.end || '', room: se.room || '', reason: 'Make-up for the class of ' + fdate(missed, 'short') });
+}
 const markCancelled = guard(async key => {
   const s = sessionFromKey(key); if(!s) return;
   await store.upsert('diary', { sessionKey: key, date: s.date, start: s.start, end: s.end, courseId: s.courseId, kind: s.kind === 'Regular' ? 'Regular' : s.kind, status: 'Cancelled', remarks: 'Class did not take place', hours: '0' });
-  toast('Marked as not held — add a make-up class from Timetable → Extra classes if needed.');
+  toast('Marked as not held — you will be reminded until a make-up class is scheduled.', false, { label: 'Schedule make-up', fn: () => scheduleMakeup(s.courseId, s.date) });
 });
 VIEWS.diary = () => {
   const t = today(), now = nowParts();
@@ -3770,7 +3923,42 @@ VIEWS.publications = () => {
   return pageHead('Publications', 'From idea to print — revision deadlines and long reviews are flagged automatically') + strip + sum + listTable('publications');
 };
 VIEWS.collaborations = () => pageHead('Collaborations', 'Internal, national, international and industry collaborations') + listTable('collaborations');
-VIEWS.conferences = () => pageHead('Conferences & workshops', 'Attended, presented, invited talks, organised — abstract and registration deadlines are reminded') + listTable('conferences');
+/* Conferences & workshops as boxes: key dates (abstract, full paper, registration / fee, the event itself) side by side */
+function confDateBox(label, d, done, extra, t){
+  if(!WD.validDate(d)) return done ? `<div class="cf-d ok"><span class="k">${label}</span><b>✓</b><span class="x">done</span></div>` : `<div class="cf-d none"><span class="k">${label}</span><b>—</b><span class="x">not set</span></div>`;
+  const n = WD.diffDays(t, d), cls = done ? 'ok' : n < 0 ? 'late' : n <= 7 ? 'soon' : '';
+  const note = done ? '✓ done' : n < 0 ? 'passed' : n === 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`;
+  return `<div class="cf-d ${cls}"><span class="k">${label}</span><b>${fdate(d, 'short')}</b><span class="x">${note}${extra ? ' · ' + extra : ''}</span></div>`;
+}
+function confCard(c, t){
+  const st = c.status || 'Planned', absDone = ['Abstract submitted','Registered','Attended','Presented'].includes(st), regDone = c.feePaid === 'Paid' || c.feePaid === 'Waived / sponsored' || ['Registered','Attended','Presented'].includes(st);
+  const end = WD.validDate(c.end) ? c.end : c.start, live = !['Not attending','Cancelled'].includes(st);
+  const ev = WD.validDate(c.start) ? (() => { const n = WD.diffDays(t, c.start), past = end < t; return `<div class="cf-d ev ${past ? 'ok' : n <= 7 && n >= 0 ? 'soon' : ''}"><span class="k">Event</span><b>${end === c.start ? fdate(c.start, 'short') : c.start.slice(0, 7) === end.slice(0, 7) ? WD.toDate(c.start).getUTCDate() + '–' + fdate(end, 'short') : fdate(c.start, 'short') + ' – ' + fdate(end, 'short')}</b><span class="x">${past ? 'over' : c.start <= t ? 'on now' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'}</span></div>`; })() : `<div class="cf-d none ev"><span class="k">Event</span><b>dates not set</b></div>`;
+  const ovi = live && WD.validDate(c.start) && end >= t ? overlapFor('conferences', c.id) : null, uid = 'ovc_' + c.id;
+  const fee = [c.regFee, c.feePaid].filter(Boolean).join(' · ');
+  return `<div class="card cf-card ${live ? '' : 'off'}" onclick="editRecord('conferences','${c.id}')">
+    <div class="cf-top"><div style="min-width:0"><div class="cf-kind">${esc(c.kind || 'Conference')}${c.location === 'Outside campus' || (!c.location && c.mode !== 'Online') ? ' · <span style="color:var(--warn)">Outside campus</span>' : c.mode === 'Online' ? ' · Online' : ''}</div><div class="cf-t">${esc(c.title)}</div>
+      <div class="faint" style="font-size:12.5px">${[c.role, c.organiser, c.venue, c.mode && c.mode !== 'Offline' ? c.mode : ''].filter(Boolean).map(esc).join(' · ')}</div></div>
+      <div class="cf-st">${overlapBadge(ovi, uid)}${chip(st)}</div></div>
+    ${overlapDetail(ovi, uid)}
+    <div class="cf-dates">${confDateBox('Abstract', c.abstractDeadline, absDone, '', t)}${confDateBox('Full paper', c.fullPaperDeadline, ['Registered','Attended','Presented'].includes(st) && !!c.fullPaperDeadline, '', t)}${confDateBox('Reg. & fee', c.registrationDeadline, regDone, '', t)}${ev}</div>
+    ${fee ? `<div class="cf-paper"><span class="faint">Registration fee:</span> ${esc(c.regFee || '—')}${c.feePaid ? ` <span class="chip ${c.feePaid === 'Paid' || c.feePaid === 'Waived / sponsored' ? 'ok' : 'warn'}">${esc(c.feePaid)}</span>` : ''}</div>` : ''}
+    ${c.paperTitle ? `<div class="cf-paper"><span class="faint">Paper / talk:</span> ${esc(c.paperTitle)}</div>` : ''}
+    <div class="cf-links" onclick="event.stopPropagation()">${c.link ? `<a class="lk" href="${esc(c.link)}" target="_blank" rel="noopener">Event website ↗</a>` : '<span class="faint" style="font-size:12px">No link added</span>'}${(c.docs || []).length ? linksHtml(c.docs, 3) : ''}</div>
+  </div>`;
+}
+VIEWS.conferences = () => {
+  const t = today(), view = state.filters.confView || 'cards', when = state.filters.confWhen || 'upcoming';
+  const sw = `<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><div class="seg">${[['upcoming','Upcoming'],['past','Past'],['all','All']].map(([k, l]) => `<button class="${when === k ? 'on' : ''}" onclick="state.filters.confWhen='${k}';rerender()">${l}</button>`).join('')}</div><div class="seg">${[['cards','Boxes'],['table','Table']].map(([k, l]) => `<button class="${view === k ? 'on' : ''}" onclick="state.filters.confView='${k}';rerender()">${l}</button>`).join('')}</div></div>`;
+  const head = pageHead('Conferences & workshops', 'Abstract, full-paper and registration / fee deadlines and the event dates at a glance — each deadline is reminded', `<button class="btn sm" onclick="editRecord('conferences')">+ Add conference / workshop</button>`);
+  if(view === 'table') return head + sw + listTable('conferences');
+  const keyDate = c => [c.abstractDeadline, c.fullPaperDeadline, c.registrationDeadline, c.start].filter(d => WD.validDate(d) && d >= t).sort()[0] || c.start || '';
+  const isPast = c => { const e = WD.validDate(c.end) ? c.end : c.start; return WD.validDate(e) && e < t; };
+  let L = state.data.conferences.filter(c => when === 'all' ? true : when === 'past' ? isPast(c) : !isPast(c));
+  L = when === 'past' ? L.sort((a, b) => (a.start || '') < (b.start || '') ? 1 : -1) : L.sort((a, b) => (keyDate(a) || '9') < (keyDate(b) || '9') ? -1 : 1);
+  if(!L.length) return head + sw + `<div class="card empty"><b>No ${when === 'all' ? '' : when} conferences or workshops</b>Add one with its abstract, registration / fee and event dates — each is reminded.</div>`;
+  return head + sw + `<div class="grid g2 cf-grid">${L.map(c => confCard(c, t)).join('')}</div>`;
+};
 /* Achievements & certificates: one place for every certificate, course completion and award — ready for appraisal, NAAC/NIRF and CV updates. */
 VIEWS.achievements = () => {
   const A = state.data.achievements, t = today(), yr = t.slice(0, 4);
@@ -3795,6 +3983,16 @@ VIEWS.achievements = () => {
   }
   else body = listTable('achievements', { emptyHint: 'Course completions (NPTEL, SWAYAM, Coursera), FDP and workshop certificates, professional certifications, awards, best-paper awards, recognitions, memberships, patents and invited talks — each with the certificate link, ready for appraisal and NAAC files.' });
   return pageHead('Achievements & certificates', 'Courses completed, certificates, awards and recognitions — with the certificate copy on file') + tb.html + sum + body;
+};
+VIEWS.repeatExams = () => {
+  const L = state.data.repeatExams, done = x => ['Marks submitted','Cancelled'].includes(x.status);
+  const open = L.filter(x => !done(x)), noDate = open.filter(x => !WD.validDate(x.date));
+  const studs = open.reduce((n, x) => n + (x.students || []).filter(p => !p.status || p.status === 'Pending').length, 0);
+  const tb = tabs('repeatExams', [['open', 'To do' + (open.length ? ' (' + open.length + ')' : '')], ['done', 'Done'], ['all', 'All']]);
+  const sum = open.length ? `<div class="muted" style="font-size:13px;margin:-4px 0 12px">${open.length} open · ${studs} student${studs !== 1 ? 's' : ''} still to appear${noDate.length ? ` · <b style="color:var(--bad)">${noDate.length} without a date yet</b>` : ''}</div>` : '';
+  const filter = tb.cur === 'open' ? (x => !done(x)) : tb.cur === 'done' ? done : null;
+  return pageHead('CIA repeats & exceptions', 'Repeat CIAs, make-up tests, repeat practicals and other exceptions allotted to you — with the students, the date assured to them and the marks deadline. They appear in your calendar, alerts and morning email.')
+    + tb.html + sum + listTable('repeatExams', Object.assign({ preset: { allottedOn: today(), status: 'Allotted' }, emptyHint: 'When the COE or HoD allots a repeat CIA, make-up test or other exception, add it here with the students. Fix the date you assure them — it goes on your calendar — and the deadline for submitting marks.' }, filter ? { filter } : {}));
 };
 VIEWS.offices = () => pageHead('Units & offices', 'Department, school, university, HED, centres, examination office and other bodies your work is for. Link meetings, events, action items and reminders to them; each one then shows everything connected to it.') + listTable('offices');
 VIEWS.reviews = () => {
@@ -3935,7 +4133,7 @@ VIEWS.meetings = () => {
   else {
     const up = state.data.meetings.map(m => ({ m, d: meetingNext(m, t) })).filter(x => x.d).sort((a, b) => (a.d + (a.m.time || '')) < (b.d + (b.m.time || '')) ? -1 : 1).map(x => Object.assign({}, x.m, { date: x.d }));
     const noMin = state.data.meetings.flatMap(m => meetingMissingMinutes(m).map(d => Object.assign({}, m, { date: d }))).sort((a, b) => a.date < b.date ? 1 : -1);
-    const row = m => `<div class="tli click" onclick="editRecord('meetings','${m.id}')"><div class="tm">${fdate(m.date, 'short')}</div><div class="bd">${catDot('meeting')}<div class="tt">${esc(WD.meetingTitle(state.data, m))}</div><div class="dt">${[m.time && ftime(m.time), m.with, m.venue].filter(Boolean).map(esc).join(' · ')}</div></div><div class="rt">${chip(m.status)}</div></div>`;
+    const row = m => { const ovi = m.date >= t ? overlapFor('meetings', m.id, m.date) : null, uid = 'ovm_' + m.id + '_' + m.date; return `<div class="tli click" onclick="editRecord('meetings','${m.id}')"><div class="tm">${fdate(m.date, 'short')}</div><div class="bd">${catDot('meeting')}<div class="tt">${esc(WD.meetingTitle(state.data, m))}</div><div class="dt">${[m.time && ftime(m.time), m.with, m.venue].filter(Boolean).map(esc).join(' · ')}</div>${overlapDetail(ovi, uid)}</div><div class="rt">${overlapBadge(ovi, uid)}${chip(m.status)}</div></div>`; };
     body = `<div class="grid g2"><div class="card"><h3>Upcoming meetings</h3>${up.length ? `<div class="tl">${up.map(row).join('')}</div>` : '<div class="empty" style="padding:10px">None scheduled.</div>'}</div><div class="card"><h3>Minutes not recorded</h3>${noMin.length ? `<div class="tl">${noMin.map(row).join('')}</div>` : '<div class="empty" style="padding:10px">All recorded.</div>'}</div></div>`;
   }
   const up = state.data.meetings.filter(m => meetingNext(m, t)).length;
@@ -4040,22 +4238,53 @@ function allEvents(){
   return out;
 }
 /* overlaps for an item in a list: a small badge with the count; tapping it opens the detail under the row */
-function overlapInfo(src, id, start, end){
-  const r = WD.byId(state.data, src, id); if(!r) return null;
-  const rec = Object.assign({}, r, src === 'events' ? { start, end } : {});
+let _ovCache = {};
+const OV_SKIP_STATUS = ['Cancelled','Did not attend','Not attending','Postponed','Rejected','Completed','Held','Attended','Done','Expired','Dropped'];
+function overlapFor(coll, id, onDate){
+  if(!DATE_SPEC[coll] || ['diary','classAdjust','actions','reminders'].includes(coll)) return null;
+  const r = WD.byId(state.data, coll, id); if(!r) return null;
+  const sp = DATE_SPEC[coll], k = coll + '|' + id + '|' + (onDate || '');
+  if(k in _ovCache) return _ovCache[k];
+  let rec = r;
+  if(onDate && WD.validDate(r[sp[0]]) && onDate !== r[sp[0]]){
+    rec = Object.assign({}, r, { [sp[0]]: onDate });
+    if(sp[1] && WD.validDate(r[sp[1]]) && r[sp[1]] > r[sp[0]]) rec[sp[1]] = WD.addDays(onDate, WD.diffDays(r[sp[0]], r[sp[1]]));
+  }
+  const last = sp[1] && WD.validDate(rec[sp[1]]) ? rec[sp[1]] : rec[sp[0]];
+  const repeating = (r.repeat || 'None') !== 'None';
+  if(!WD.validDate(rec[sp[0]]) || last < today() || (!repeating && OV_SKIP_STATUS.includes(r.status)) || ['Cancelled','Did not attend','Not attending','Postponed'].includes(r.status) || (coll === 'leaves' && ['Cancelled','Rejected'].includes(r.status))) return _ovCache[k] = null;
+  return _ovCache[k] = overlapInfo(coll, id, null, null, rec);
+}
+function overlapInfo(src, id, start, end, recIn){
+  const r = recIn || WD.byId(state.data, src, id); if(!r) return null;
+  const rec = recIn ? r : Object.assign({}, r, src === 'events' ? { start, end } : {});
   const D = dayCheckData(src, rec); if(!D) return null;
   const rows = []; D.days.forEach(x => x.rows.filter(rw => rw.o).forEach(rw => rows.push(Object.assign({ d: x.d }, rw))));
   const cls = [...new Map(D.clashCls.map(c => [c.key, c])).values()];
-  return rows.length ? { rows, cls, multi: D.g.d1 !== D.g.d2 } : null;
+  return rows.length ? { rows, cls, multi: D.g.d1 !== D.g.d2, coll: src, id } : null;
 }
 function overlapBadge(info, uid){
   if(!info) return '';
   return `<button type="button" class="ovb" title="Overlaps with other work — tap for details" onclick="event.stopPropagation();const d=document.getElementById('${uid}');d.hidden=!d.hidden;this.classList.toggle('open')"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="8" r="4.5"/><circle cx="10" cy="8" r="4.5"/></svg>${info.rows.length}</button>`;
 }
-function overlapDetail(info, uid){
+function overlapDetail(info, uid, ncols){
   if(!info) return '';
-  return `<div class="ovd" id="${uid}" hidden onclick="event.stopPropagation()"><div class="ovd-h">Overlaps with</div>${info.rows.map(rw => `<div class="dc-it"><span class="dc-tm">${info.multi ? fdate(rw.d, 'short') + ' ' : ''}${esc(rw.t)}</span><span class="dc-dot" style="background:var(--c-${rw.cat})"></span><span>${esc(rw.txt)}</span></div>`).join('')}${info.cls.length ? `<div class="acts" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${info.cls.slice(0, 6).map(c => `<button type="button" class="btn ghost sm" onclick="newAdjustment('${c.key}')">Adjust ${esc(courseName(c.courseId, true))} · ${fdate(c.date, 'short')}</button>`).join('')}</div>` : ''}</div>`;
+  const open = rw => rw.key ? `newAdjustment('${rw.key}')` : rw.ref && rw.ref.coll ? `openRef('${rw.ref.coll}','${rw.ref.id}')` : '';
+  const skippable = info.rows.filter(rw => rw.ref && ['meetings','events'].includes(rw.ref.coll) && !(rw.ref.coll === info.coll && rw.ref.id === info.id));
+  const inner = `<div class="ovd-h">Overlaps with</div>${info.rows.map(rw => { const o = open(rw); return `<div class="dc-it ${o ? 'ovd-click' : ''}" ${o ? `onclick="${o}" title="Open"` : ''}><span class="dc-tm">${info.multi ? fdate(rw.d, 'short') + ' ' : ''}${esc(rw.t)}</span><span class="dc-dot" style="background:var(--c-${rw.cat})"></span><span>${esc(rw.txt)}</span></div>`; }).join('')}
+    <div class="acts" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${info.cls.slice(0, 6).map(c => `<button type="button" class="btn ghost sm" onclick="newAdjustment('${c.key}')">Adjust ${esc(courseName(c.courseId, true))} · ${fdate(c.date, 'short')}</button>`).join('')}${skippable.slice(0, 3).map(rw => `<button type="button" class="btn ghost sm" title="You will attend this one instead" onclick="skipOverlap('${rw.ref.coll}','${rw.ref.id}','${rw.occ}')">Won’t attend: ${esc(rw.txt.replace(/^[^:]+:\s*/, '').slice(0, 40))}</button>`).join('')}${info.coll && info.id ? `<button type="button" class="btn ghost sm" onclick="editRecord('${info.coll}','${info.id}')">Note arrangement</button>` : ''}</div>`;
+  if(ncols) return `<tr class="ovtr" id="${uid}" hidden onclick="event.stopPropagation()"><td colspan="${ncols}"><div class="ovd">${inner}</div></td></tr>`;
+  return `<div class="ovd" id="${uid}" hidden onclick="event.stopPropagation()">${inner}</div>`;
 }
+/* the other item will be missed: a meeting becomes "Did not attend", an event "Not attending" (repeating ones: just that date) */
+const skipOverlap = guard(async (coll, id, d) => {
+  const r = WD.byId(state.data, coll, id); if(!r) return;
+  const copy = JSON.parse(JSON.stringify(r)), upd = Object.assign({}, r), st = coll === 'meetings' ? 'Did not attend' : 'Not attending';
+  if((r.repeat || 'None') !== 'None'){ const ss = (r.sessions || []).filter(x => x.date !== d); ss.unshift({ date: d, status: 'Did not attend', notes: 'Clashed with other work', url: '' }); upd.sessions = ss; }
+  else upd.status = st;
+  await store.upsert(coll, upd);
+  toast(`Marked “${st.toLowerCase()}” — ${coll === 'meetings' ? WD.meetingTitle(state.data, r) : r.title}`, false, { label: 'Undo', fn: () => store.upsert(coll, copy) });
+});
 function eventRow(e){
   const t = today(), d = WD.toDate(e.start), live = !['Cancelled','Not attending','Did not attend'].includes(e.status);
   const tasks = e.tasks.length ? `${e.tasks.filter(x => x.done).length}/${e.tasks.length} tasks` : '';
@@ -4473,6 +4702,7 @@ const RS = {
   mentorMeetings:  { label:'Mentoring meetings', date:r => r.date, title:r => (r.kind || 'Meeting') + ' — ' + menteeNames(r), status:r => r.status, detail:r => [r.agenda, r.notes, r.actions && 'Actions: ' + r.actions].filter(Boolean).join(' | ') },
   classLog:        { label:'Class-teacher follow-ups', date:r => r.date, title:r => ((WD.byId(state.data, 'classGroups', r.classId) || {}).name || 'Class') + ' — ' + (r.kind || ''), status:r => r.status, detail:r => [(r.studentIds || []).map(id => (WD.byId(state.data, 'students', id) || {}).name).filter(Boolean).join(', '), r.summary, r.action && 'Action: ' + r.action].filter(Boolean).join(' | ') },
   achievements:    { label:'Achievements & certificates', date:r => r.date || r.end || r.start, title:r => r.title, status:r => r.status, detail:r => [r.kind, r.issuer, r.level, r.duration, r.grade && 'Grade: ' + r.grade, r.certNo && 'No. ' + r.certNo].filter(Boolean).join(' · ') },
+  repeatExams:     { label:'CIA repeats & exceptions', date:r => r.date || r.allottedOn, title:r => (r.kind || '') + ' — ' + (r.courseId ? courseName(r.courseId, true) : r.subject || ''), status:r => r.status, detail:r => [(r.students || []).length + ' student(s)' + ((r.students || []).length ? ': ' + r.students.map(p => p.name + (p.reason ? ' (' + p.reason + ')' : '')).join(', ') : ''), r.allottedBy && 'allotted by ' + r.allottedBy, r.deadline && 'marks by ' + fdate(r.deadline)].filter(Boolean).join(' · ') },
   classAdjust:     { label:'Class adjustments', date:r => r.date, title:r => courseName(r.courseId, true) + ' — ' + (r.type || ''), status:r => r.type, detail:r => [r.start && r.start + (r.end ? '–' + r.end : ''), r.colleague, r.clashWith && 'clashed with ' + r.clashWith, r.makeupDate && 'make-up ' + fdate(r.makeupDate)].filter(Boolean).join(' · ') },
   leaves:          { label:'Leave & OD', date:r => r.from, title:r => r.type, status:r => r.status, detail:r => [WD.leaveDays(state.data, r, state.settings) + ' day(s)', r.to && r.to !== r.from ? 'till ' + fdate(r.to) : '', r.reason, WD.linkName(state.data, r.link)].filter(Boolean).join(' · ') },
   mentees:         { label:'Mentees', date:() => '', title:r => r.name, status:r => r.active === 'No' ? 'Inactive' : 'Active', detail:r => [r.regNo, r.programme, r.batch].filter(Boolean).join(' · ') },
@@ -4495,7 +4725,7 @@ const RS = {
   holidays:        { label:'Holidays', date:r => r.date, title:r => r.name, status:() => '', detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
   courses:         { label:'Courses', date:() => '', title:r => courseName(r.id), status:r => r.kind, detail:r => [r.classLabel, r.credits && r.credits + ' credits', (WD.byId(state.data, 'semesters', r.semesterId) || {}).name].filter(Boolean).join(' · ') }
 };
-const PERIOD_ORDER = [['Teaching', ['diary','extraClasses','classAdjust']], ['Examinations', ['examDuties','evaluations']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Achievements & certificates', ['achievements']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
+const PERIOD_ORDER = [['Teaching', ['diary','extraClasses','classAdjust']], ['Examinations', ['examDuties','evaluations','repeatExams']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Achievements & certificates', ['achievements']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
 function unitTitle(r){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(r.unit)); return u ? u.title : ''; }
 function menteeNames(r){ const n = (r.menteeIds || []).map(id => (WD.byId(state.data, 'mentees', id) || {}).name).filter(Boolean); return n.length > 4 ? n.length + ' mentees' : n.join(', '); }
 function inPeriod(cfg, r, from, to){
