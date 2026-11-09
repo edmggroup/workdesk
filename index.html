@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-09-2">
-<meta name="app-version" content="1.14">
+<meta name="app-build" content="2026-11-09-4">
+<meta name="app-version" content="1.15">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -579,6 +579,26 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .daychk .warn{margin-top:8px;font-size:12.5px;color:var(--bad)}
 .daychk .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .adj-note{font-size:11.5px;color:var(--c-adjust);font-weight:600}
+
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:8px 14px;font:inherit;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--navy,#1F3A5F);color:#fff}
+.oe-card{display:flex;flex-direction:column;gap:6px}
+.oe-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.oe-t{font-weight:650;font-size:15px}
+.oe-prog .k{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:6px 0 4px}
+.oe-kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:3px 10px;margin:6px 0 0;font-size:13px}
+.oe-kv dt{color:var(--muted)}
+.oe-kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+
+.ovb{display:inline-flex;align-items:center;gap:4px;border:1px solid color-mix(in srgb,var(--bad) 40%,transparent);background:color-mix(in srgb,var(--bad) 10%,transparent);color:var(--bad);border-radius:999px;padding:2px 8px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;line-height:1.4;margin-right:6px}
+.ovb:hover,.ovb.open{background:var(--bad);color:#fff}
+.ovd{margin-top:8px;border:1px solid var(--border);border-left:3px solid var(--bad);border-radius:8px;padding:8px 10px;background:var(--surface);cursor:default}
+.ovd[hidden]{display:none}
+.ovd-h{font-size:11.5px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.ovd .dc-it{display:flex;gap:8px;align-items:baseline;font-size:13px;padding:2px 0}
+.ovd .dc-tm{min-width:96px;flex-shrink:0;color:var(--muted);font-size:12px}
+.ovd .dc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;align-self:center}
 </style>
 </head>
 <body>
@@ -1232,9 +1252,11 @@ var WD = (function () {
         if (rep !== 'None' && validDate(e.start)) occurrencesBetween({ date: e.start, repeat: rep, until: e.until }, addDays(today, -30), addDays(today, -1)).forEach(function (d) {
           if (!hasSession(e, d)) items.push({ date: d, time: '', cat: 'minutes', title: 'Session record pending: ' + e.title, detail: 'Held on ' + short(d) + '? Add its minutes / notes', ref: { coll: 'events', id: e.id }, overdue: true, occurrence: d });
         });
-        else if ((e.category === 'Event I am in-charge of' || /In-charge|Organiser/.test(e.role || '')) && validDate(e.end || e.start) && (e.end || e.start) < today && (e.end || e.start) >= addDays(today, -30) && !String(e.outcome || '').trim() && !(e.sessions || []).length)
+        else if ((e.category === 'Event I am in-charge of' || /In-charge|Organiser/.test(e.role || '')) && validDate(e.end || e.start) && (e.end || e.start) < today && (e.end || e.start) >= addDays(today, -30) && !String(e.outcome || '').trim() && ['Report submitted', 'Uploaded (IQAC / NAAC / website)'].indexOf(e.reportStatus) === -1 && !(e.sessions || []).length)
           items.push({ date: e.end || e.start, time: '', cat: 'minutes', title: 'Event report pending: ' + e.title, detail: 'Record the outcome / report and mark it Completed', ref: { coll: 'events', id: e.id }, overdue: true });
       }
+      if ((e.category === 'Event I am in-charge of' || /In-charge|Organiser/.test(e.role || '')) && ['Proposal to be sent', 'Proposal submitted'].indexOf(e.approval) !== -1 && validDate(e.start) && e.start >= today)
+        push('event', addDays(e.start, -14), '', (e.approval === 'Proposal to be sent' ? 'Send the proposal for approval: ' : 'Approval awaited: ') + e.title, 'Event on ' + short(e.start), { coll: 'events', id: e.id }, true);
       if (e.status === 'Planned') push('event', e.regDeadline, '', 'Registration deadline: ' + e.title, e.organiser || '', { coll: 'events', id: e.id }, true);
       (e.tasks || []).forEach(function (m, i) { if (!m.done) push('event', m.due, '', m.text, 'Event: ' + e.title, { coll: 'events', id: e.id, sub: i }, true); });
     });
@@ -1859,6 +1881,18 @@ const SCHEMA = {
       {k:'mode', label:'Mode', type:'select', opts:['Offline','Online','Hybrid'], def:'Offline'},
       {k:'regDeadline', label:'Registration / nomination deadline', type:'date'},
       {k:'status', label:'Status', type:'select', opts:['Planned','Registered','Confirmed','Attended','Completed','Did not attend','Not attending','Cancelled'], def:'Planned', help:'Attended — you took part; Completed — an event you ran is over; Not attending — decided in advance; Did not attend — it happened without you.'},
+      {k:'approval', label:'Approval', type:'select', opts:['','Proposal to be sent','Proposal submitted','Approved','Not approved'], def:'', org:true, help:'Planning & execution — these fields appear for events you organise or are in charge of.'},
+      {k:'fundSource', label:'Funded by', type:'text', ph:'Department, IQAC, sponsor, registration fee', org:true},
+      {k:'team', label:'Organising team / co-coordinators', type:'text', full:true, org:true},
+      {k:'guests', label:'Chief guest / resource persons', type:'text', full:true, org:true},
+      {k:'audience', label:'Target audience', type:'text', ph:'UG students, faculty, schools…', org:true},
+      {k:'expected', label:'Participants expected', type:'number', org:true},
+      {k:'budget', label:'Budget requested (₹)', type:'number', org:true},
+      {k:'sanctioned', label:'Budget sanctioned (₹)', type:'number', org:true},
+      {k:'spent', label:'Expenditure (₹)', type:'number', org:true},
+      {k:'participants', label:'Participants (actual)', type:'number', org:true},
+      {k:'reportStatus', label:'Report', type:'select', opts:['','Report pending','Report submitted','Uploaded (IQAC / NAAC / website)'], def:'', org:true},
+      {k:'feedback', label:'Feedback summary', type:'textarea', full:true, org:true},
       {k:'tasks', label:'My tasks for this event', type:'checklist', full:true, addLabel:'+ Add task'},
       {k:'sessions', label:'Session records — minutes / notes for each time it is held', type:'sessions', full:true},
       {k:'outcome', label:'Outcome / report / certificate details', type:'textarea', full:true},
@@ -1968,7 +2002,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -2720,7 +2754,7 @@ const FORM_EXTRAS = {
   leaves: rec => '',
   fundingCalls: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="projectFromCall('${rec.id}')">+ Start a proposal for this call</button>` : '',
   projects: rec => rec.callId && WD.byId(state.data, 'fundingCalls', rec.callId) ? `<button type="button" class="btn ghost sm" onclick="closeModal();editRecord('fundingCalls','${rec.callId}')">Open funding call</button>` : '',
-  events: rec => (rec.id && rec.location === 'Outside campus' ? `<button type="button" class="btn ghost sm" onclick="applyOdFor('events','${rec.id}')">Record OD</button>` : '') + (rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('Event: ${esc(rec.title || '').replace(/'/g, '&#39;')}', 'events:${rec.id}')">+ Action item</button>` : '') + (rec.id && ['Completed','Attended','Conducted'].includes(rec.status) || (rec.id && rec.end && rec.end < today()) ? `<button type="button" class="btn ghost sm" onclick="certificateFrom('events','${rec.id}')">+ Certificate</button>` : ''),
+  events: rec => `<button type="button" class="btn ghost sm" id="stdChkBtn" onclick="addStdChecklist()">+ Standard planning checklist</button>` + (rec.id && rec.location === 'Outside campus' ? `<button type="button" class="btn ghost sm" onclick="applyOdFor('events','${rec.id}')">Record OD</button>` : '') + (rec.id ? `<button type="button" class="btn ghost sm" onclick="addActionFrom('Event: ${esc(rec.title || '').replace(/'/g, '&#39;')}', 'events:${rec.id}')">+ Action item</button>` : '') + (rec.id && ['Completed','Attended','Conducted'].includes(rec.status) || (rec.id && rec.end && rec.end < today()) ? `<button type="button" class="btn ghost sm" onclick="certificateFrom('events','${rec.id}')">+ Certificate</button>` : ''),
   achievements: rec => rec.certLink ? `<a class="btn ghost sm" href="${esc(rec.certLink)}" target="_blank" rel="noopener">Open certificate ↗</a>` : '',
   conferences: rec => rec.id && ['Attended','Presented'].includes(rec.status) ? `<button type="button" class="btn ghost sm" onclick="certificateFrom('conferences','${rec.id}')">+ Certificate</button>` : '',
   extraClasses: rec => rec.id ? `<button type="button" class="btn ghost sm" onclick="logSessionFromExtra('${rec.id}')">Log in diary</button>` : ''
@@ -2768,8 +2802,8 @@ function ownClassClashes(coll, r){
   });
   return out;
 }
-function dayCheckHtml(coll, r){
-  const g = specRange(coll, r); if(!g) return '';
+function dayCheckData(coll, r){
+  const g = specRange(coll, r); if(!g) return null;
   const meId = r.id, days = [];
   const ov = (x, y) => g.allDay || (g.a !== null && x !== null && y !== null && g.a < y && x < g.b);
   const skip = new Set(['diary','minutes','reminder','action','evaluation','review','publication','plan','funding','project','achievement','classteacher','adjust']);
@@ -2795,6 +2829,11 @@ function dayCheckHtml(coll, r){
     });
     days.push({ d, rows });
   }
+  return { g, days, clashCls, clashOther };
+}
+function dayCheckHtml(coll, r){
+  const D = dayCheckData(coll, r); if(!D) return '';
+  const { g, days, clashCls, clashOther } = D;
   const any = days.some(x => x.rows.length);
   const head = g.d1 === g.d2 ? 'Also on ' + fdate(g.d1, 'dow') : `Also between ${fdate(g.d1, 'short')} and ${fdate(g.d2, 'short')}`;
   if(!any) return `<div class="daychk"><h4>${head}</h4><div class="faint" style="font-size:13px">Nothing else on ${g.d1 === g.d2 ? 'this date' : 'these dates'} — no classes, events, meetings or duties.</div></div>`;
@@ -2869,6 +2908,7 @@ function editRecord(coll, id, preset){
   }
   if(coll === 'mentees' && form.elements.studentId) form.elements.studentId.addEventListener('change', () => { const s = WD.byId(state.data, 'students', form.elements.studentId.value); if(!s) return; const c = WD.byId(state.data, 'classGroups', s.classId); [['name', s.name], ['regNo', s.regNo], ['email', s.email], ['phone', s.phone], ['programme', c && c.name], ['batch', c && c.batch]].forEach(([k, v]) => { if(form.elements[k] && !form.elements[k].value && v) form.elements[k].value = v; }); });
   if(coll === 'classLog' && form.elements.classId) form.elements.classId.addEventListener('change', () => { const tmp = readForm(coll, form, rec); $('[data-f="studentIds"]', form).outerHTML = fieldHtml(coll, sch.fields.find(f => f.k === 'studentIds'), tmp); });
+  if(coll === 'events'){ toggleOrgFields(form); ['role','category'].forEach(k => form.elements[k] && form.elements[k].addEventListener('change', () => toggleOrgFields(form))); }
   if(coll === 'meetings' && form.elements.committeeId) form.elements.committeeId.addEventListener('change', () => { if(form.elements.committeeId.value) form.elements.kind.value = 'Committee meeting'; });
   form.onsubmit = guard(async ev => {
     ev.preventDefault();
@@ -3923,6 +3963,70 @@ VIEWS.reminders = () => bucketPage('reminders', 'Reminders', 'One-off or repeati
 /* ---------------- EVENTS ---------------- */
 const CONF_TO_CAT = c => ['FDP','Short-term course','Summer / winter school'].includes(c.kind) ? 'FDP / training programme' : (c.role === 'Organiser / convener' ? 'Event I am in-charge of' : 'External conference / workshop');
 const EVENT_COLORS = { 'FDP / training programme':'plan', 'Institutional event':'event', 'Event I am in-charge of':'action', 'Research event':'publication', 'External conference / workshop':'conference', 'Teaching-related event':'classes', 'Other academic activity':'meeting' };
+/* ---------- events you organise: planning & execution ---------- */
+const OWN_ROLES = ['In-charge / coordinator','Organiser / convener'];
+function isOwnEvent(e){ return !!e && (OWN_ROLES.includes(e.role) || e.category === 'Event I am in-charge of'); }
+function toggleOrgFields(form){
+  if(!form) return; const own = OWN_ROLES.includes(form.elements.role && form.elements.role.value) || (form.elements.category && form.elements.category.value) === 'Event I am in-charge of';
+  SCHEMA.events.fields.filter(f => f.org).forEach(f => { const el = $(`[data-f="${f.k}"]`, form); if(el) el.style.display = own ? '' : 'none'; });
+  const b = $('#stdChkBtn'); if(b) b.style.display = own ? '' : 'none';
+}
+const STD_EVENT_TASKS = [[-30,'Concept note & approval from HoD / Dean'],[-28,'Budget approval'],[-25,'Book venue / auditorium & AV'],[-21,'Confirm chief guest / resource persons'],[-18,'Brochure / circular & poster'],[-15,'Registration form & publicity'],[-7,'Certificates, mementos & hospitality'],[-3,'Attendance sheet, feedback form, photographer'],[-1,'Final check: venue, programme schedule, anchors'],[2,'Thank-you mails & photos (geo-tagged)'],[7,'Event report to IQAC / department'],[10,'Settle accounts & bills'],[14,'Upload report / photos to website & NAAC folder']];
+function addStdChecklist(){
+  const form = $('#recForm'); if(!form) return;
+  const out = readForm('events', form, modalState.base);
+  if(!WD.validDate(out.start)) return toast('Enter the event date first — task dates are counted from it.', true);
+  const have = new Set((out.tasks || []).map(x => x.text.toLowerCase()));
+  const t = today(), approved = out.approval === 'Approved';
+  out.tasks = (out.tasks || []).concat(STD_EVENT_TASKS.filter(([, txt]) => !have.has(txt.toLowerCase())).map(([n, text]) => {
+    const due = WD.addDays(n > 0 ? (WD.validDate(out.end) ? out.end : out.start) : out.start, n);
+    const done = approved && /approval/i.test(text);
+    return { text, due: !done && due < t && out.start >= t ? t : due, done }; // a late start: what is already past is due now
+  })).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
+  const id = modalState.id; closeModal(); editRecord('events', id, out);
+  toast('Standard planning checklist added — remove what you don’t need, then Save.');
+}
+function ownEventStage(e, t){
+  const end = WD.validDate(e.end) ? e.end : e.start;
+  if(['Cancelled','Not attending','Did not attend'].includes(e.status)) return 'cancelled';
+  if((e.repeat || 'None') !== 'None') return WD.nextOccurrence({ date: e.start, repeat: e.repeat, until: e.until }, t) ? 'series' : 'done';
+  if(e.start > t) return 'planning';
+  if(end >= t) return 'now';
+  const reported = String(e.outcome || '').trim() || ['Report submitted','Uploaded (IQAC / NAAC / website)'].includes(e.reportStatus);
+  return reported ? 'done' : 'report';
+}
+function ownEventCard(e, t){
+  const tk = e.tasks || [], done = tk.filter(x => x.done).length, late = tk.filter(x => !x.done && x.due && x.due < t), next = tk.filter(x => !x.done).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1)[0];
+  const rep = (e.repeat || 'None') !== 'None', nx = rep ? WD.nextOccurrence({ date: e.start, repeat: e.repeat, until: e.until }, t) : null;
+  if(nx){ const dur = WD.validDate(e.end) && e.end > e.start ? WD.diffDays(e.start, e.end) : 0; e = Object.assign({}, e, { start: nx, end: WD.addDays(nx, dur) }); }
+  const days = WD.diffDays(t, e.start), end = WD.validDate(e.end) ? e.end : e.start;
+  const when = (rep && nx ? e.repeat.toLowerCase() + ' · next ' : '') + (e.start > t ? (days === 1 ? 'tomorrow' : `in ${days} days`) : end >= t ? 'on now' : `${WD.diffDays(end, t)} days ago`);
+  const money = n => n === '' || n == null ? '' : '₹' + Number(n).toLocaleString('en-IN');
+  const kv = [
+    ['Approval', e.approval ? chip(e.approval) : '<span class="faint">not recorded</span>'],
+    ['Participants', [e.expected && e.expected + ' expected', e.participants && e.participants + ' attended'].filter(Boolean).join(' · ') || '—'],
+    ['Budget', [e.sanctioned ? money(e.sanctioned) + ' sanctioned' : e.budget ? money(e.budget) + ' requested' : '', e.spent ? money(e.spent) + ' spent' : ''].filter(Boolean).join(' · ') || '—'],
+    ['Guests', e.guests ? esc(e.guests) : '—'], ['Team', e.team ? esc(e.team) : '—'],
+    ...(rep ? [['Sessions', `${(e.sessions || []).length} recorded`]] : []),
+    ['Report', e.reportStatus ? chip(e.reportStatus) : (String(e.outcome || '').trim() ? '<span class="chip ok">Outcome noted</span>' : '<span class="faint">—</span>')]
+  ];
+  const live = !['Cancelled','Not attending','Did not attend'].includes(e.status), ovi = live && end >= t ? overlapInfo('events', e.id, e.start, end) : null, uid = 'ovd_own_' + e.id;
+  return `<div class="card oe-card click" onclick="editRecord('events','${e.id}')">
+    <div class="oe-top"><div><div class="oe-t">${esc(e.title)}</div><div class="faint" style="font-size:12.5px">${fdate(e.start, 'dow')}${end !== e.start ? ' – ' + fdate(end, 'short') : ''}${e.time ? ' · ' + ftime(e.time) : ''}${e.venue ? ' · ' + esc(e.venue) : ''} · <b>${when}</b></div></div><div style="display:flex;gap:6px;align-items:center">${overlapBadge(ovi, uid)}${chip(e.status)}</div></div>${overlapDetail(ovi, uid)}
+    ${tk.length ? `<div class="oe-prog"><div class="k"><span>Planning checklist</span><span>${done}/${tk.length} done${late.length ? ` · <b style="color:var(--bad)">${late.length} overdue</b>` : ''}</span></div>${bar(Math.round(done * 100 / tk.length))}${next ? `<div class="faint" style="font-size:12px;margin-top:4px">Next: ${esc(next.text)}${next.due ? ' · ' + fdate(next.due, 'short') : ''}</div>` : ''}</div>` : `<div class="faint" style="font-size:12.5px;margin:8px 0">No planning checklist yet — open it and use “+ Standard planning checklist”.</div>`}
+    <dl class="oe-kv">${kv.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+    ${(e.docs || []).length ? `<div class="faint" style="font-size:12px">${e.docs.length} document${e.docs.length > 1 ? 's' : ''} attached</div>` : ''}</div>`;
+}
+function ownEventsView(){
+  const t = today(), own = state.data.events.filter(isOwnEvent);
+  const groups = [['planning','Being planned'],['now','Happening now'],['series','Recurring series'],['report','Over — report pending'],['done','Completed'],['cancelled','Cancelled']];
+  const by = {}; own.forEach(e => { const g = ownEventStage(e, t); (by[g] = by[g] || []).push(e); });
+  Object.keys(by).forEach(g => by[g].sort((a, b) => g === 'done' || g === 'cancelled' ? (a.start < b.start ? 1 : -1) : (a.start < b.start ? -1 : 1)));
+  if(!own.length) return `<div class="card empty"><b>No events of your own yet</b>Events where your role is <i>In-charge / coordinator</i> or <i>Organiser / convener</i>, or in the category <i>Event I am in-charge of</i>, are listed here with their planning and execution details.<div style="margin-top:12px"><button class="btn sm" onclick="planOwnEvent()">+ Plan an event</button></div></div>`;
+  const sum = `<div class="muted" style="font-size:13px;margin-bottom:10px">${own.length} event${own.length > 1 ? 's' : ''} you organise · ${(by.planning || []).length} being planned · ${(by.series || []).length ? (by.series || []).length + ' recurring · ' : ''}${(by.report || []).length} awaiting a report · ${(by.done || []).length} completed</div>`;
+  return sum + groups.filter(([g]) => (by[g] || []).length).map(([g, l]) => `<div class="agday" style="margin:14px 0 8px">${l} · ${by[g].length}</div><div class="grid g2">${by[g].map(e => ownEventCard(e, t)).join('')}</div>`).join('');
+}
+function planOwnEvent(){ editRecord('events', null, { category: 'Event I am in-charge of', role: 'Organiser / convener', status: 'Planned', approval: 'Proposal to be sent', location: 'On campus' }); }
 function allEvents(){
   const t = today();
   const out = state.data.events.map(e => {
@@ -3935,18 +4039,43 @@ function allEvents(){
   state.data.conferences.forEach(c => { if(WD.validDate(c.start)) out.push({ src:'conferences', id:c.id, title:c.title, cat:CONF_TO_CAT(c), start:c.start, end:c.end || c.start, role:c.role, venue:[(c.location || (c.mode === 'Online' ? '' : 'Outside campus')), c.venue].filter(Boolean).join(' · '), organiser:c.organiser, status:c.status, tasks:[], reg:c.registrationDeadline, docs:c.docs || [], extra:c.kind, outside:(c.location || (c.mode === 'Online' ? 'Online' : 'Outside campus')) === 'Outside campus' }); });
   return out;
 }
+/* overlaps for an item in a list: a small badge with the count; tapping it opens the detail under the row */
+function overlapInfo(src, id, start, end){
+  const r = WD.byId(state.data, src, id); if(!r) return null;
+  const rec = Object.assign({}, r, src === 'events' ? { start, end } : {});
+  const D = dayCheckData(src, rec); if(!D) return null;
+  const rows = []; D.days.forEach(x => x.rows.filter(rw => rw.o).forEach(rw => rows.push(Object.assign({ d: x.d }, rw))));
+  const cls = [...new Map(D.clashCls.map(c => [c.key, c])).values()];
+  return rows.length ? { rows, cls, multi: D.g.d1 !== D.g.d2 } : null;
+}
+function overlapBadge(info, uid){
+  if(!info) return '';
+  return `<button type="button" class="ovb" title="Overlaps with other work — tap for details" onclick="event.stopPropagation();const d=document.getElementById('${uid}');d.hidden=!d.hidden;this.classList.toggle('open')"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="8" r="4.5"/><circle cx="10" cy="8" r="4.5"/></svg>${info.rows.length}</button>`;
+}
+function overlapDetail(info, uid){
+  if(!info) return '';
+  return `<div class="ovd" id="${uid}" hidden onclick="event.stopPropagation()"><div class="ovd-h">Overlaps with</div>${info.rows.map(rw => `<div class="dc-it"><span class="dc-tm">${info.multi ? fdate(rw.d, 'short') + ' ' : ''}${esc(rw.t)}</span><span class="dc-dot" style="background:var(--c-${rw.cat})"></span><span>${esc(rw.txt)}</span></div>`).join('')}${info.cls.length ? `<div class="acts" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${info.cls.slice(0, 6).map(c => `<button type="button" class="btn ghost sm" onclick="newAdjustment('${c.key}')">Adjust ${esc(courseName(c.courseId, true))} · ${fdate(c.date, 'short')}</button>`).join('')}</div>` : ''}</div>`;
+}
 function eventRow(e){
   const t = today(), d = WD.toDate(e.start), live = !['Cancelled','Not attending','Did not attend'].includes(e.status);
   const tasks = e.tasks.length ? `${e.tasks.filter(x => x.done).length}/${e.tasks.length} tasks` : '';
+  const ovi = live && e.end >= t ? overlapInfo(e.src, e.id, e.start, e.end) : null, uid = 'ovd_' + e.src + '_' + e.id;
   return `<div class="ev-row ${e.end < t ? 'past' : ''} ${live ? '' : 'off'}" onclick="editRecord('${e.src}','${e.id}')">
     <div class="ev-date"><b>${d.getUTCDate()}</b><span>${MON[d.getUTCMonth()]}</span>${e.end !== e.start ? `<em>–${fdate(e.end, 'short')}</em>` : ''}</div>
     <div class="ev-body"><div class="cat" style="color:var(--c-${EVENT_COLORS[e.cat] || 'meeting'})"><i style="background:var(--c-${EVENT_COLORS[e.cat] || 'meeting'})"></i>${esc(e.cat)}</div>
       <div class="ev-title">${esc(e.title)}${e.repeat ? ` <span class="chip navy">Repeats ${esc(e.repeat.toLowerCase())}</span>` : ''}${e.outside ? ' <span class="chip warn">Outside campus</span>' : ''}</div>
       <div class="dt">${[e.time && ftime(e.time), e.role, e.organiser, e.venue].filter(Boolean).map(esc).join(' · ')}${e.reg && e.reg >= t && e.status === 'Planned' ? ` · <span style="color:var(--warn);font-weight:600">register by ${fdate(e.reg, 'short')}</span>` : ''}${tasks ? ' · ' + tasks : ''}${e.sessions ? ` · ${e.sessions} session record${e.sessions > 1 ? 's' : ''}` : ''}${e.link && WD.linkName(state.data, e.link) ? ' · for ' + esc(WD.linkName(state.data, e.link)) : ''}</div>
-      ${e.docs.length ? `<div style="margin-top:4px">${linksHtml(e.docs, 3)}</div>` : ''}</div>
-    <div class="rt">${chip(e.status)}${e.start <= t && e.end >= t && live ? '<span class="chip ok">Today</span>' : ''}</div></div>`;
+      ${e.docs.length ? `<div style="margin-top:4px">${linksHtml(e.docs, 3)}</div>` : ''}${overlapDetail(ovi, uid)}</div>
+    <div class="rt">${overlapBadge(ovi, uid)}${chip(e.status)}${e.start <= t && e.end >= t && live ? '<span class="chip ok">Today</span>' : ''}</div></div>`;
 }
 VIEWS.events = () => {
+  const mine = state.filters.evMine === true;
+  const nOwn = state.data.events.filter(isOwnEvent).length;
+  const sw = `<div class="seg" style="margin-bottom:12px"><button class="${!mine ? 'on' : ''}" onclick="state.filters.evMine=false;rerender()">All events</button><button class="${mine ? 'on' : ''}" onclick="state.filters.evMine=true;rerender()">Organised by me${nOwn ? ' (' + nOwn + ')' : ''}</button></div>`;
+  if(mine) return pageHead('Events', 'Events you organise or are in charge of — planning, execution and report', `<button class="btn sm" onclick="planOwnEvent()">+ Plan an event</button>`) + sw + ownEventsView();
+  return eventsAllView(sw);
+};
+function eventsAllView(sw){
   const t = today(), all = allEvents();
   const when = state.filters.evWhen || 'upcoming', cat = state.filters.evCat || '';
   const inWhen = e => when === 'upcoming' ? e.end >= t : when === 'past' ? e.end < t : true;
@@ -3958,9 +4087,9 @@ VIEWS.events = () => {
   const chips = `<div class="ev-cats"><button class="evc ${!cat ? 'on' : ''}" onclick="state.filters.evCat='';rerender()">All <b>${Object.values(counts).reduce((a, b) => a + b, 0)}</b></button>${EVENT_CATS.map(c => `<button class="evc ${cat === c ? 'on' : ''}" style="--ec:var(--c-${EVENT_COLORS[c]})" onclick="state.filters.evCat='${c}';rerender()"><i></i>${esc(c)} <b>${counts[c] || 0}</b></button>`).join('')}</div>`;
   const whenBtns = ['upcoming','past','all'].map(w => `<button class="tab ${when === w ? 'active' : ''}" onclick="state.filters.evWhen='${w}';rerender()">${{ upcoming:'Upcoming', past:'Past', all:'All' }[w]}</button>`).join('');
   return pageHead('Events', 'FDPs, institutional events, events you are in charge of, research and teaching events, external conferences and workshops', `<button class="btn sm" onclick="editRecord('events', null, {category:'${cat || 'Institutional event'}', start:'${t}'})">+ Add event</button>`) +
-    `<div class="tabs">${whenBtns}</div>${chips}` + (list.length ? `<div class="card ev-list">${body}</div>` : `<div class="card empty"><b>No ${when === 'all' ? '' : when} events${cat ? ' in “' + esc(cat) + '”' : ''}</b>Add one with “+ Add event”. Conferences and workshops from Research → Conferences also appear here.</div>`) +
+    sw + `<div class="tabs">${whenBtns}</div>${chips}` + (list.length ? `<div class="card ev-list">${body}</div>` : `<div class="card empty"><b>No ${when === 'all' ? '' : when} events${cat ? ' in “' + esc(cat) + '”' : ''}</b>Add one with “+ Add event”. Conferences and workshops from Research → Conferences also appear here.</div>`) +
     `<div class="faint" style="font-size:12.5px;margin-top:8px">Conferences and workshops recorded under Research → Conferences & workshops (with abstract deadlines) are included here automatically.</div>`;
-};
+}
 
 /* ---------------- SETTINGS ---------------- */
 VIEWS.settings = () => {
@@ -4238,6 +4367,9 @@ function buildSample(){
    ['Alumni interaction', 'Other academic activity', 'Participant', -12, -12, 'Department', null, 'Completed'],
    ['Induction programme for new faculty', 'Institutional event', 'Resource person', -30, -29, 'HR & IQAC', null, 'Completed']]
     .forEach(([title, category, role, a, b, organiser, tasks, status]) => out.events.push(mk({ title, category, role, start: D(a), end: D(b), organiser, status: status || 'Confirmed', tasks: tasks || [], regDeadline: category === 'FDP / training programme' ? D(3) : '', location: 'On campus' })));
+  Object.assign(out.events.find(e => e.title === 'Science Day exhibition'), { approval: 'Approved', fundSource: 'Department + IQAC', team: 'Dr. P. Nair, Dr. S. Thomas, 6 student volunteers', guests: 'Dr. K. Iyer (ISRO) — chief guest', audience: 'School students & UG', expected: '300', budget: '40000', sanctioned: '35000', venue: 'Main auditorium' });
+  Object.assign(out.events.find(e => e.title.startsWith('Guest lecture for II M.Sc.')), { approval: 'Proposal submitted', guests: 'Mr. R. Menon (battery recycling start-up)', audience: 'II M.Sc. Physics', expected: '60', budget: '5000' });
+  out.events.push(mk({ title: 'Physics Week quiz', category: 'Event I am in-charge of', role: 'In-charge / coordinator', start: D(-20), end: D(-20), organiser: 'Department', status: 'Completed', approval: 'Approved', participants: '85', expected: '80', sanctioned: '6000', spent: '5200', reportStatus: 'Report pending', location: 'On campus', tasks: [{ text: 'Question bank', due: D(-27), done: true }, { text: 'Certificates', due: D(-21), done: true }, { text: 'Event report to IQAC / department', due: D(-13), done: false }] }));
   out.events.push(mk({ title: 'Department research seminar series', category: 'Research event', role: 'Organiser / convener', start: D(-54), end: D(-54), time: '15:30', repeat: 'Monthly', organiser: 'Department', venue: 'Seminar hall', location: 'On campus', status: 'Confirmed', sessions: [{ date: D(-24), status: 'Held', notes: 'Talk on Na-ion cathodes by a PhD scholar; 34 attended. Next speaker confirmed.', url: '' }, { date: D(-54), status: 'Held', notes: 'Inaugural session; 41 attended.', url: '' }] }));
   out.events.push(mk({ title: 'Invited talk at a partner college', category: 'External conference / workshop', role: 'Speaker / presenter', start: D(3), end: D(3), time: '10:00', organiser: 'St. Aloysius College', venue: 'Mangaluru', location: 'Outside campus', status: 'Confirmed' }));
   // funding calls
