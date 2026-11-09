@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-09-1">
-<meta name="app-version" content="1.13">
+<meta name="app-build" content="2026-11-09-2">
+<meta name="app-version" content="1.14">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -849,13 +849,13 @@ var WD = (function () {
     list(data, 'leaves').forEach(function (l) { if (['Cancelled', 'Rejected'].indexOf(l.status) === -1 && covers(l.from, l.to)) add(null, null, true, (l.type || 'Leave') + (l.reason ? ': ' + l.reason : ''), 'leave', { coll: 'leaves', id: l.id }); });
     list(data, 'examDuties').forEach(function (x) { var a = minutes(x.start); if (x.status !== 'Cancelled' && x.date === d && a !== null) add(a, tm(x.end, 180, a), false, (x.dutyType || 'Exam duty') + (x.exam ? ' — ' + x.exam : ''), 'exam', { coll: 'examDuties', id: x.id }); });
     list(data, 'meetings').forEach(function (m) {
-      if (m.status === 'Cancelled') return;
+      if (['Cancelled', 'Did not attend', 'Postponed'].indexOf(m.status) !== -1) return;
       var onDay = (m.repeat || 'None') !== 'None' ? occurrencesBetween({ date: m.date, repeat: m.repeat, until: m.until }, d, d).length > 0 : m.date === d;
       var a = minutes(m.time); if (onDay && a !== null) add(a, tm(m.endTime, 60, a), false, meetingTitle(data, m), 'meeting', { coll: 'meetings', id: m.id });
     });
     list(data, 'mentorMeetings').forEach(function (m) { var a = minutes(m.time); if (m.status !== 'Cancelled' && m.date === d && a !== null) add(a, a + 60, false, 'Mentoring' + (m.kind ? ' (' + m.kind + ')' : ''), 'mentoring', { coll: 'mentorMeetings', id: m.id }); });
     list(data, 'events').forEach(function (e) {
-      if (['Cancelled', 'Not attending'].indexOf(e.status) !== -1 || !validDate(e.start)) return;
+      if (['Cancelled', 'Not attending', 'Did not attend'].indexOf(e.status) !== -1 || !validDate(e.start)) return;
       var dur = validDate(e.end) && e.end > e.start ? diffDays(e.start, e.end) : 0, onDay;
       if ((e.repeat || 'None') !== 'None') onDay = occurrencesBetween({ date: e.start, repeat: e.repeat, until: e.until }, addDays(d, -dur), d).length > 0;
       else onDay = covers(e.start, e.end);
@@ -967,7 +967,7 @@ var WD = (function () {
   }
   /* Does a meeting / event already have a session or minutes record for date d (±1 day)? */
   function hasSession(rec, d) {
-    return (rec.sessions || []).some(function (s) { return validDate(s.date) && Math.abs(diffDays(s.date, d)) <= 1 && (String(s.notes || '').trim() || s.status === 'Cancelled' || s.status === 'Postponed'); });
+    return (rec.sessions || []).some(function (s) { return validDate(s.date) && Math.abs(diffDays(s.date, d)) <= 1 && (String(s.notes || '').trim() || ['Cancelled', 'Postponed', 'Attended', 'Did not attend'].indexOf(s.status) !== -1); });
   }
   /* Working days of a leave (skips Sundays and holidays). */
   function leaveDays(data, l, settings) {
@@ -1116,8 +1116,8 @@ var WD = (function () {
         return;
       }
       if (m.status === 'Scheduled') push('meeting', m.date, m.time, mt, mdet, { coll: 'meetings', id: m.id }, false);
-      if (!ignoreLead && R.minutes.on && validDate(m.date) && m.date < today && m.date >= addDays(today, -30) && m.status !== 'Cancelled' && !String(m.minutes || '').trim())
-        items.push({ date: m.date, time: '', cat: 'minutes', title: 'Minutes pending: ' + mt, detail: 'Record the minutes / decisions' + (m.status === 'Scheduled' ? ' and mark it Held' : ''), ref: { coll: 'meetings', id: m.id }, overdue: true });
+      if (!ignoreLead && R.minutes.on && validDate(m.date) && m.date < today && m.date >= addDays(today, -30) && ['Cancelled', 'Did not attend', 'Postponed'].indexOf(m.status) === -1 && !(m.status === 'Attended' && ['Convener / chair', 'Secretary / minutes'].indexOf(m.myRole) === -1) && !String(m.minutes || '').trim())
+        items.push({ date: m.date, time: '', cat: 'minutes', title: 'Minutes pending: ' + mt, detail: 'Record the minutes / decisions' + (m.status === 'Scheduled' ? ' and mark it Attended or Held' : ''), ref: { coll: 'meetings', id: m.id }, overdue: true });
     });
     // action items
     list(data, 'actions').forEach(function (a) {
@@ -1201,7 +1201,7 @@ var WD = (function () {
     });
     // events (one-off or recurring)
     list(data, 'events').forEach(function (e) {
-      if (['Cancelled', 'Not attending'].indexOf(e.status) !== -1) return;
+      if (['Cancelled', 'Not attending', 'Did not attend'].indexOf(e.status) !== -1) return;
       var ln = linkName(data, e.link);
       var outside = e.location === 'Outside campus';
       var evLead = outside && R.outside.on ? Math.max(R.event.lead, R.outside.lead) : R.event.lead;
@@ -1226,7 +1226,7 @@ var WD = (function () {
         });
       } else {
         var multi = e.end && e.end !== e.start ? ' (till ' + short(e.end) + ')' : '';
-        if (e.status !== 'Completed' || ignoreLead) pushSpan('event', e.start, e.end, e.time, e.title, detail + multi, { coll: 'events', id: e.id }, { lead: evLead, outside: outside });
+        if (['Completed', 'Attended'].indexOf(e.status) === -1 || ignoreLead) pushSpan('event', e.start, e.end, e.time, e.title, detail + multi, { coll: 'events', id: e.id }, { lead: evLead, outside: outside });
       }
       if (!ignoreLead && R.minutes.on) {
         if (rep !== 'None' && validDate(e.start)) occurrencesBetween({ date: e.start, repeat: rep, until: e.until }, addDays(today, -30), addDays(today, -1)).forEach(function (d) {
@@ -1258,7 +1258,7 @@ var WD = (function () {
     });
     if (on('leave')) {
       var odLead = Math.max(R.leave.lead, R.outside.on ? R.outside.lead : 0);
-      var outsideItems = list(data, 'events').filter(function (e) { return e.location === 'Outside campus' && ['Cancelled', 'Not attending', 'Completed'].indexOf(e.status) === -1 && (e.repeat || 'None') === 'None'; }).map(function (e) { return { coll: 'events', r: e, start: e.start, end: e.end || e.start, title: e.title }; })
+      var outsideItems = list(data, 'events').filter(function (e) { return e.location === 'Outside campus' && ['Cancelled', 'Not attending', 'Did not attend', 'Completed', 'Attended'].indexOf(e.status) === -1 && (e.repeat || 'None') === 'None'; }).map(function (e) { return { coll: 'events', r: e, start: e.start, end: e.end || e.start, title: e.title }; })
         .concat(list(data, 'conferences').filter(function (c) { return (c.location || (c.mode === 'Online' ? 'Online' : 'Outside campus')) === 'Outside campus' && ['Cancelled', 'Not attending', 'Attended', 'Presented'].indexOf(c.status) === -1; }).map(function (c) { return { coll: 'conferences', r: c, start: c.start, end: c.end || c.start, title: c.title }; }));
       outsideItems.forEach(function (o) {
         if (!validDate(o.start) || o.start < today) return;
@@ -1347,7 +1347,7 @@ var WD = (function () {
    field types: text, textarea, date, time, number, select, multiref, ref,
                 url, email, checklist (sub-items with text/due/done), log
    =================================================================== */
-const STATUS_TONE = {
+const STATUS_TONE = { 'Did not attend':'bad','Postponed':'warn',
   // green
   'Completed':'ok','Published':'ok','Accepted':'ok','Held':'ok','Done':'ok','Conducted':'ok','Submitted (review)':'ok','Active':'ok','Ongoing':'ok','Sanctioned':'ok','Attended':'ok','Presented':'ok','Certificate received':'ok','Awarded':'ok',
   // amber
@@ -1858,7 +1858,7 @@ const SCHEMA = {
       {k:'venue', label:'Venue / link', type:'text'},
       {k:'mode', label:'Mode', type:'select', opts:['Offline','Online','Hybrid'], def:'Offline'},
       {k:'regDeadline', label:'Registration / nomination deadline', type:'date'},
-      {k:'status', label:'Status', type:'select', opts:['Planned','Registered','Confirmed','Completed','Cancelled','Not attending'], def:'Planned'},
+      {k:'status', label:'Status', type:'select', opts:['Planned','Registered','Confirmed','Attended','Completed','Did not attend','Not attending','Cancelled'], def:'Planned', help:'Attended — you took part; Completed — an event you ran is over; Not attending — decided in advance; Did not attend — it happened without you.'},
       {k:'tasks', label:'My tasks for this event', type:'checklist', full:true, addLabel:'+ Add task'},
       {k:'sessions', label:'Session records — minutes / notes for each time it is held', type:'sessions', full:true},
       {k:'outcome', label:'Outcome / report / certificate details', type:'textarea', full:true},
@@ -1913,6 +1913,7 @@ const SCHEMA = {
     fields:[
       {k:'kind', label:'Type of meeting', type:'select', opts:['Department meeting','Committee meeting','Responsibility / in-charge meeting','School / Faculty meeting','Campus / University meeting','Staff meeting','Meeting with HoD / Dean','Research group meeting','Project review meeting','Parent / student meeting','External / industry meeting','Online meeting','Other'], def:'Department meeting'},
       {k:'committeeId', label:'Committee (only for committee meetings)', type:'ref', ref:'committees', optional:true},
+      {k:'myRole', label:'My role', type:'select', opts:['','Member / participant','Convener / chair','Secretary / minutes','Special invitee','Presenter','Organiser'], def:''},
       {k:'with', label:'Organised by / with', type:'text', ph:'HoD, Dean, IQAC, funding agency…'},
       {k:'link', label:'Linked to (responsibility, committee, event, project, class…)', type:'parent', full:true, help:'Connects this item to the work it belongs to. It then shows up on that record too.'},
       {k:'title', label:'Subject', type:'text', ph:'Budget review, NAAC preparation, syllabus revision…'},
@@ -1922,7 +1923,7 @@ const SCHEMA = {
       {k:'repeat', label:'Repeats', type:'select', opts:['None','Weekly','Fortnightly','Monthly','Quarterly','Every semester','Yearly'], def:'None', help:'For regular meetings such as a monthly IQAC or weekly group meeting. Record each date’s minutes below.'},
       {k:'until', label:'Repeats until', type:'date'},
       {k:'venue', label:'Venue / link', type:'text'},
-      {k:'status', label:'Status', type:'select', opts:['Scheduled','Held','Cancelled'], def:'Scheduled'},
+      {k:'status', label:'Status', type:'select', opts:['Scheduled','Attended','Held','Did not attend','Postponed','Cancelled'], def:'Scheduled', help:'Attended — you took part; Held — you convened it; Did not attend — it took place without you.'},
       {k:'agenda', label:'Agenda', type:'textarea', full:true},
       {k:'minutes', label:'Minutes / decisions', type:'textarea', full:true, help:'For a one-off meeting. A repeating meeting keeps its minutes date by date below.'},
       {k:'sessions', label:'Minutes for each meeting date (repeating meetings)', type:'sessions', full:true}
@@ -1967,7 +1968,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -2639,7 +2640,7 @@ function parentCandidates(pc, rec){
   if(pc === 'courses'){ const cs = currentSemester(); a = a.filter(r => !cs || r.semesterId === cs.id || cur === pc + ':' + r.id); }
   return a;
 }
-function sessionRow(m){ return `<div class="ss-row"><input class="inp" type="date" value="${esc(m.date || '')}"><select class="inp">${['Held','Cancelled','Postponed'].map(x => `<option ${x === (m.status || 'Held') ? 'selected' : ''}>${x}</option>`).join('')}</select><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button><textarea class="inp" rows="2" placeholder="Minutes / notes — who attended, what was decided, outcome">${esc(m.notes || '')}</textarea><input class="inp" type="url" placeholder="Report / photos / attendance link (optional)" value="${esc(m.url || '')}"></div>`; }
+function sessionRow(m){ return `<div class="ss-row"><input class="inp" type="date" value="${esc(m.date || '')}"><select class="inp">${['Held','Attended','Did not attend','Cancelled','Postponed'].map(x => `<option ${x === (m.status || 'Held') ? 'selected' : ''}>${x}</option>`).join('')}</select><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button><textarea class="inp" rows="2" placeholder="Minutes / notes — who attended, what was decided, outcome">${esc(m.notes || '')}</textarea><input class="inp" type="url" placeholder="Report / photos / attendance link (optional)" value="${esc(m.url || '')}"></div>`; }
 const PERSON_ROLES = ['Co-PI','Collaborator','Mentor','Industry partner','Consultant','JRF / project staff','Other'];
 function personRow(m){ return `<div class="pp-row"><input class="inp" placeholder="Name" value="${esc(m.name || '')}"><select class="inp">${PERSON_ROLES.map(r => `<option ${r === (m.role || 'Co-PI') ? 'selected' : ''}>${r}</option>`).join('')}</select><input class="inp" placeholder="Institution / department" value="${esc(m.institution || '')}"><input class="inp" type="email" placeholder="Email" value="${esc(m.email || '')}"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
 async function uploadToDrive(input, coll, key){
@@ -3192,11 +3193,25 @@ function renderBell(){
 function agendaItemHtml(i, showDate){
   const click = i.ref ? `openRef('${i.ref.coll}','${i.ref.id}')` : (i.view ? `go('${i.view}')` : '');
   const right = i.ref && i.ref.coll === 'actions' ? `<button class="btn ghost sm" onclick="event.stopPropagation();quickDone('actions','${i.ref.id}')">Done</button>`
-    : i.ref && i.ref.coll === 'reminders' ? `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${i.ref.id}')">Done</button>` : '';
+    : i.ref && i.ref.coll === 'reminders' ? `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${i.ref.id}')">Done</button>`
+    : i.ref && ['meetings','events'].includes(i.ref.coll) && ['meeting','event','minutes'].includes(i.cat) && i.date && i.date <= today() && !/report pending/i.test(i.title) && !attendedOn(i.ref.coll, i.ref.id, i.occurrence || i.date) ? `<button class="btn ghost sm" title="Mark that you attended" onclick="event.stopPropagation();markAttended('${i.ref.coll}','${i.ref.id}','${i.occurrence || i.date}')">Attended</button>` : '';
   return `<div class="tli ${click ? 'click' : ''}" ${click ? `onclick="${click}"` : ''}>
     <div class="tm">${showDate ? `<span style="color:${i.overdue ? 'var(--bad)' : 'inherit'}">${i.date ? (i.overdue ? relDay(i.date) : fdate(i.date, 'short')) : ''}</span>` : (i.time ? ftime(i.time) : '<span class="faint">All day</span>')}</div>
     <div class="bd">${catDot(i.cat)}<div class="tt">${esc(i.title)}</div>${i.detail ? `<div class="dt">${esc(i.detail)}</div>` : ''}</div><div class="rt">${right}</div></div>`;
 }
+/* "Attended" in one tap: a one-off meeting / event gets status Attended; a repeating one gets a session record for that date */
+function attendedOn(coll, id, d){ const r = WD.byId(state.data, coll, id); if(!r) return true; if((r.repeat || 'None') !== 'None') return (r.sessions || []).some(x => x.date === d && ['Attended','Held'].includes(x.status)); return ['Attended','Held','Completed'].includes(r.status); }
+const markAttended = guard(async (coll, id, d) => {
+  const r = WD.byId(state.data, coll, id); if(!r) return;
+  const copy = JSON.parse(JSON.stringify(r)), upd = Object.assign({}, r);
+  if((r.repeat || 'None') !== 'None'){
+    const ss = (r.sessions || []).slice(); const k = ss.findIndex(x => x.date === d);
+    if(k >= 0) ss[k] = Object.assign({}, ss[k], { status: 'Attended' }); else ss.unshift({ date: d, status: 'Attended', notes: '', url: '' });
+    upd.sessions = ss;
+  } else upd.status = 'Attended';
+  await store.upsert(coll, upd);
+  toast(`Marked as attended — ${fdate(d, 'short')}`, false, { label: coll === 'meetings' ? 'Add minutes' : 'Add notes', fn: () => editRecord(coll, id) });
+});
 function openRef(coll, id){ closeDrawer(); if(coll === 'slots'){ go('timetable'); return; } if(coll === 'classAdjust' && String(id).startsWith('new:')){ newAdjustment(String(id).slice(4)); return; } editRecord(coll, id); }
 function openDrawer(){
   closeDrawer();
@@ -3221,7 +3236,8 @@ function meetingNext(m, from){
 /* Past meeting dates (last 60 days) still without minutes. */
 function meetingMissingMinutes(m){
   const t = today();
-  if(m.status === 'Cancelled') return [];
+  if(['Cancelled','Did not attend','Postponed'].includes(m.status)) return [];
+  if(m.status === 'Attended' && (m.repeat || 'None') === 'None' && !['Convener / chair','Secretary / minutes'].includes(m.myRole)) return [];
   if((m.repeat || 'None') !== 'None') return WD.occurrencesBetween({ date: m.date, repeat: m.repeat, until: m.until }, WD.addDays(t, -60), WD.addDays(t, -1)).filter(d => !WD.hasSession(m, d));
   return WD.validDate(m.date) && m.date < t && !String(m.minutes || '').trim() ? [m.date] : [];
 }
@@ -3321,7 +3337,7 @@ VIEWS.dashboard = () => {
   const meetUp = state.data.meetings.map(m => ({ m, d: meetingNext(m, t) })).filter(x => x.d).sort((a, b) => (a.d + (a.m.time || '')) < (b.d + (b.m.time || '')) ? -1 : 1).map(x => Object.assign({}, x.m, { date: x.d }));
   const mentUp = state.data.mentorMeetings.filter(m => m.status === 'Scheduled' && m.date >= t).sort(byDate);
   const dutyUp = state.data.examDuties.filter(x => x.status === 'Assigned' && x.date >= t).sort(byDate);
-  const evUp = allEvents().filter(e => e.end >= t && !['Cancelled','Not attending','Completed'].includes(e.status)).sort((a, b) => a.start < b.start ? -1 : 1);
+  const evUp = allEvents().filter(e => e.end >= t && !['Cancelled','Not attending','Did not attend','Completed','Attended'].includes(e.status)).sort((a, b) => a.start < b.start ? -1 : 1);
   const callsOpen = state.data.fundingCalls.filter(f => callBucket(f) === 'open' && WD.validDate(f.lastDate)).sort((a, b) => a.lastDate < b.lastDate ? -1 : 1);
   const toApply = state.data.projects.filter(p => projectGroup(p) === 'toApply').length;
   const tile = (n, l, s, color, view, tab) => `<button class="tile" style="--tc:var(--c-${color})" title="${esc(String(s || '').replace(/<[^>]+>/g, ''))}" onclick="go('${view}'${tab ? `,'${tab}'` : ''})"><div class="n">${n}</div><div class="l">${l}</div><div class="s">${s || '&nbsp;'}</div></button>`;
@@ -3920,7 +3936,7 @@ function allEvents(){
   return out;
 }
 function eventRow(e){
-  const t = today(), d = WD.toDate(e.start), live = !['Cancelled','Not attending'].includes(e.status);
+  const t = today(), d = WD.toDate(e.start), live = !['Cancelled','Not attending','Did not attend'].includes(e.status);
   const tasks = e.tasks.length ? `${e.tasks.filter(x => x.done).length}/${e.tasks.length} tasks` : '';
   return `<div class="ev-row ${e.end < t ? 'past' : ''} ${live ? '' : 'off'}" onclick="editRecord('${e.src}','${e.id}')">
     <div class="ev-date"><b>${d.getUTCDate()}</b><span>${MON[d.getUTCMonth()]}</span>${e.end !== e.start ? `<em>–${fdate(e.end, 'short')}</em>` : ''}</div>
@@ -4774,8 +4790,8 @@ function weekReviewData(base){
   const diary = D.diary.filter(d => inWk(d.date, w));
   const done = diary.filter(d => d.status === 'Conducted');
   const byCourse = {}; done.forEach(d => { const k = courseName(d.courseId, true); byCourse[k] = byCourse[k] || { n: 0, h: 0, topics: [] }; byCourse[k].n++; byCourse[k].h += WD.entryHours(d); if(d.topic) byCourse[k].topics.push(d.topic); });
-  const meetingsHeld = D.meetings.filter(m => (m.repeat || 'None') === 'None' ? (inWk(m.date, w) && m.status !== 'Cancelled' && m.date <= t) : (m.sessions || []).some(s => inWk(s.date, w)));
-  const eventsWk = allEvents().filter(e => e.start <= w.sun && e.end >= w.mon && !['Cancelled','Not attending'].includes(e.status) && e.start <= t);
+  const meetingsHeld = D.meetings.filter(m => (m.repeat || 'None') === 'None' ? (inWk(m.date, w) && !['Cancelled','Did not attend','Postponed'].includes(m.status) && m.date <= t) : (m.sessions || []).some(s => inWk(s.date, w)));
+  const eventsWk = allEvents().filter(e => e.start <= w.sun && e.end >= w.mon && !['Cancelled','Not attending','Did not attend'].includes(e.status) && e.start <= t);
   const actionsDone = D.actions.filter(a => a.status === 'Done' && inWk(a.doneOn, w));
   const remindersDone = D.reminders.flatMap(r => (r.history || []).filter(h => inWk(h.on, w)).map(h => ({ title: r.title, on: h.on })));
   const duties = D.examDuties.filter(x => inWk(x.date, w) && x.status !== 'Cancelled');

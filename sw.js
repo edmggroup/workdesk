@@ -1,7 +1,7 @@
 // Caches the app shell so Workdesk opens on a flaky connection and can be
 // installed to the home screen. Data calls to script.google.com are never cached.
 // Bump CACHE_NAME only when manifest.json or this file changes.
-const CACHE_NAME = 'workdesk-shell-v9';
+const CACHE_NAME = 'workdesk-shell-v10';
 const SHELL = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
 // Each file is cached on its own, so one missing file (e.g. an icon) can't stop the app from installing.
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE_NAME).then(c => Promise.all(SHELL.map(u => c.add(u).catch(() => null))))); self.skipWaiting(); });
