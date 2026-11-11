@@ -41,8 +41,6 @@ To check that email works, run **testDigest**.
 - an **activity** tab in the sheet — the change history (every add, edit and delete, with a copy of anything deleted so it can be restored);
 - a Drive folder **Faculty Workdesk files** — files you upload from a *Documents & links* field, sorted into one sub-folder per section. The first upload asks you to authorise Drive access again only if you deployed before v1.7 (re-deploy as a new version and approve).
 
----
-
 ## Part 2: Connect the app
 
 Open `index.html` in a text editor. Near the top of the `<script>` section, set:

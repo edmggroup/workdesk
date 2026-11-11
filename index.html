@@ -6,8 +6,8 @@
 <title>Faculty Workdesk</title>
 <meta name="description" content="Teaching, examinations, mentoring, research, projects and administrative work of a university faculty member — in one place, with automatic reminders.">
 <!-- Change both on every deployment (see SETUP.md → Updating). -->
-<meta name="app-build" content="2026-11-09-7">
-<meta name="app-version" content="1.18">
+<meta name="app-build" content="2026-11-11-4">
+<meta name="app-version" content="1.20">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1F3A5F">
 <link rel="icon" href="icons/icon-192.png">
@@ -638,6 +638,23 @@ button.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .cf-d.ev{border-style:solid;border-width:1px 1px 1px 3px;border-left-color:var(--c-conference)}
 .cf-paper{font-size:13px}
 .cf-links{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+:root{--c-followup:#2C6E9B;--c-followup-w:#E3EFF8}
+:root[data-theme="dark"]{--c-followup:#8CC2EA;--c-followup-w:#1B2A38}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-followup:#8CC2EA;--c-followup-w:#1B2A38}}
+.cm-list{display:flex;flex-direction:column;gap:6px}
+.cm-row{display:grid;grid-template-columns:132px 130px minmax(0,2fr) minmax(0,1fr) 132px auto 30px;gap:6px;align-items:center}
+.cm-done{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--muted);white-space:nowrap}
+@media (max-width:760px){.cm-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 30px}.cm-row .cm-sum{grid-column:1/-1;order:-1}}
+.ctype-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chipbtn{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+.chipbtn span{color:var(--muted);font-weight:500;margin-left:3px}
+.chipbtn.on{background:var(--navy,#1F3A5F);border-color:var(--navy,#1F3A5F);color:#fff}.chipbtn.on span{color:#cfd8e6}
+
+:root{--c-qbank:#8A4B12;--c-qbank-w:#F8ECDF}
+:root[data-theme="dark"]{--c-qbank:#E8B07A;--c-qbank-w:#33261A}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--c-qbank:#E8B07A;--c-qbank-w:#33261A}}
+
 </style>
 </head>
 <body>
@@ -710,7 +727,7 @@ var WD = (function () {
     'plans', 'publications', 'collaborations', 'conferences', 'reviews', 'contacts', 'metrics',
     'projects',
     'responsibilities', 'committees', 'meetings', 'actions', 'reminders',
-    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements', 'offices', 'classAdjust', 'repeatExams'
+    'notes', 'events', 'fundingCalls', 'classGroups', 'students', 'classLog', 'leaves', 'assessments', 'achievements', 'offices', 'classAdjust', 'repeatExams', 'qbank'
   ];
 
   /* Reminder categories: label, default lead time (days before), default on. */
@@ -733,6 +750,8 @@ var WD = (function () {
     funding:     { label: 'Funding calls — opening, last date, planned submission', lead: 14, on: true },
     classteacher:{ label: 'Class-teacher follow-ups', lead: 1, on: true },
     achievement: { label: 'Courses & certificates — course exam / end date, certificate to download, renewal', lead: 7, on: true },
+    qbank:       { label: 'Question banks & papers — question bank entries, question papers, answer keys and scrutiny due', lead: 5, on: true },
+    followup:    { label: 'Follow-ups — emails, calls and contacts to follow up (researchers, proposals, funding calls, collaborations)', lead: 1, on: true },
     makeup:      { label: 'Make-up classes — owed for classes not held / skipped, and upcoming make-up classes', lead: 2, on: true },
     repeat:      { label: 'CIA repeats & exceptions — date assured to students, marks deadline, date still to be fixed', lead: 3, on: true },
     adjust:      { label: 'Class adjustments — a class of yours clashes with a meeting, duty, event, CIA / exam or leave', lead: 7, on: true },
@@ -945,6 +964,32 @@ var WD = (function () {
     });
     return out;
   }
+  /* iCalendar text for agenda items — used for the downloaded .ics and for the live calendar feed */
+  function toIcs(items, labels, calName, stampIso) {
+    function e(s) { return String(s || '').replace(/[\;,]/g, function (m) { return '\\' + m; }).replace(/\r?\n/g, '\\n'); }
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function addMin(t, n) { var m = minutes(t) + n; if (m > 23 * 60 + 59) m = 23 * 60 + 59; return pad2(Math.floor(m / 60)) + ':' + pad2(m % 60); }
+    var stamp = String(stampIso || '').replace(/[-:]/g, '').replace(/\.\d+/, '').slice(0, 15) + 'Z';
+    var L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Faculty Workdesk//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:' + e(calName || 'Faculty Workdesk'), 'X-WR-TIMEZONE:Asia/Kolkata', 'REFRESH-INTERVAL;VALUE=DURATION:PT2H', 'X-PUBLISHED-TTL:PT2H',
+      'BEGIN:VTIMEZONE', 'TZID:Asia/Kolkata', 'BEGIN:STANDARD', 'DTSTART:19700101T000000', 'TZOFFSETFROM:+0530', 'TZOFFSETTO:+0530', 'TZNAME:IST', 'END:STANDARD', 'END:VTIMEZONE'];
+    var seen = {};
+    items.forEach(function (i, n) {
+      if (i.ongoing || !validDate(i.date)) return;
+      var d = i.date.replace(/-/g, ''), uid = 'wd-' + i.cat + '-' + ((i.ref && (i.ref.id + (i.ref.sub != null ? '-' + i.ref.sub : ''))) || n) + '-' + d + '-' + String(i.time || '').replace(':', '') + '@workdesk';
+      if (seen[uid]) return; seen[uid] = 1;
+      L.push('BEGIN:VEVENT', 'UID:' + uid, 'DTSTAMP:' + stamp);
+      if (i.time && minutes(i.time) !== null) {
+        var end = i.end && minutes(i.end) !== null && minutes(i.end) > minutes(i.time) ? i.end : addMin(i.time, 60);
+        L.push('DTSTART;TZID=Asia/Kolkata:' + d + 'T' + i.time.replace(':', '') + '00', 'DTEND;TZID=Asia/Kolkata:' + d + 'T' + end.replace(':', '') + '00');
+      } else {
+        L.push('DTSTART;VALUE=DATE:' + d, 'DTEND;VALUE=DATE:' + addDays(i.spanEnd && i.spanEnd > i.date ? i.spanEnd : i.date, 1).replace(/-/g, ''), 'TRANSP:TRANSPARENT');
+      }
+      var lab = (labels && labels[i.cat]) || i.cat;
+      L.push('SUMMARY:' + e(i.title), 'DESCRIPTION:' + e(lab + (i.detail ? ' — ' + i.detail : '')), 'CATEGORIES:' + e(lab), 'END:VEVENT');
+    });
+    L.push('END:VCALENDAR');
+    return L.map(function (l) { var out = []; while (l.length > 74) { out.push(l.slice(0, 74)); l = ' ' + l.slice(74); } out.push(l); return out.join('\r\n'); }).join('\r\n') + '\r\n';
+  }
   function diaryIndex(data) {
     var idx = {};
     list(data, 'diary').forEach(function (d) { if (d.sessionKey) idx[d.sessionKey] = d; });
@@ -961,7 +1006,7 @@ var WD = (function () {
       sessionsOn(data, settings, d).forEach(function (se) {
         if (idx[se.key]) return;
         if (se.adjust && se.adjust.type !== 'Conducted online') return;
-        if (d === today && (nowMinutes === undefined || nowMinutes === null || (minutes(se.end) || 0) > nowMinutes)) return;
+        if (d >= today) return; // today's classes are logged from tomorrow's list; the pending list runs up to yesterday
         out.push(se);
       });
     });
@@ -1144,6 +1189,26 @@ var WD = (function () {
       push('academic', s.start, '', s.name + ' begins', '', { coll: 'semesters', id: s.id }, false);
       push('academic', s.end, '', s.name + ' ends', '', { coll: 'semesters', id: s.id }, false);
     });
+    // question bank entries, question papers, answer keys, scrutiny
+    list(data, 'qbank').forEach(function (q) {
+      if (['Submitted', 'Approved', 'Cancelled'].indexOf(q.status) !== -1 || !validDate(q.dueDate)) return;
+      var req = +q.questionsRequired || 0, done = +q.questionsDone || 0;
+      var nm = (q.kind || 'Question bank') + ': ' + (q.courseId ? cname(q.courseId) : (q.subject || '')) + (q.exam ? ' — ' + q.exam : '');
+      push('qbank', q.dueDate, q.dueTime || '', (q.status === 'Returned for revision' ? 'Revise & resubmit — ' : 'Due — ') + nm, [req ? done + '/' + req + ' questions' : '', q.submitMode ? 'submit via ' + q.submitMode : '', q.requestedBy].filter(Boolean).join(' · '), { coll: 'qbank', id: q.id }, true);
+    });
+    // follow-ups from the correspondence logs (researchers, projects, calls, collaborations)
+    if (on('followup')) {
+      [['contacts', 'name'], ['projects', 'title'], ['fundingCalls', 'title'], ['collaborations', 'name']].forEach(function (cw) {
+        list(data, cw[0]).forEach(function (r) {
+          var who = r[cw[1]] || '';
+          (r.comms || []).forEach(function (m, k) {
+            if (m.done || !validDate(m.followUp)) return;
+            push('followup', m.followUp, '', 'Follow up: ' + who + (m.summary ? ' — ' + m.summary : ''), [m.mode, m.date ? 'logged ' + short(m.date) : ''].filter(Boolean).join(' · '), { coll: cw[0], id: r.id, sub: 'comm' + k }, true);
+          });
+          if (cw[0] === 'contacts' && validDate(r.nextFollowUp)) push('followup', r.nextFollowUp, '', 'Follow up: ' + who + (r.followUpNote ? ' — ' + r.followUpNote : ''), r.institution || '', { coll: 'contacts', id: r.id }, true);
+        });
+      });
+    }
     // make-up classes: owed for classes that did not happen, and the ones already scheduled
     if (on('makeup')) {
       var mkDone = {}, owed = {}, mkFrom = addDays(today, -60);
@@ -1440,7 +1505,7 @@ var WD = (function () {
     validDate: validDate, inRange: inRange, minutes: minutes, hoursBetween: hoursBetween, eachDay: eachDay,
     mergeSettings: mergeSettings, list: list, byId: byId,
     semesterFor: semesterFor, holidayOn: holidayOn, eventsOn: eventsOn, dayStatus: dayStatus, dayKeyFor: dayKeyFor,
-    sessionsOn: sessionsOn, busyBlocks: busyBlocks, classClashes: classClashes, diaryIndex: diaryIndex, pendingDiary: pendingDiary, resetCache: resetCache,
+    sessionsOn: sessionsOn, toIcs: toIcs, busyBlocks: busyBlocks, classClashes: classClashes, diaryIndex: diaryIndex, pendingDiary: pendingDiary, resetCache: resetCache,
     parseUnits: parseUnits, entryHours: entryHours, courseCoverage: courseCoverage,
     nextOccurrence: nextOccurrence, meetingTitle: meetingTitle, hasSession: hasSession, leaveDays: leaveDays, occurrencesBetween: occurrencesBetween, linkTarget: linkTarget, linkName: linkName, buildAgenda: buildAgenda, nudges: nudges
   };
@@ -1477,10 +1542,14 @@ const STANDARD_OFFICES = p => [
   ['u-exam', 'Examination office (COE)', 'Examination office']
 ];
 const SCHEDULE_CATS = ['CIA-I','CIA-II','CIA-III / other internal assessment','CIA / Internal assessment','Mid-semester exam','End-semester exam','Practical exam','Invigilation (department / school)','Viva / project review','Results','Registration / Admission','Orientation / Induction','Department event (in campus)','Institutional event (in campus)','Fest / Event','Meeting','Deadline','Other'];
+const QB_KINDS = ['Question bank entry','Question paper setting','Answer key / scheme of evaluation','Question paper scrutiny / moderation','Lab exam questions / viva questions','Assignment / quiz questions','Other'];
 const REPEAT_KINDS = ['CIA-I repeat','CIA-II repeat','CIA-III repeat','Make-up test (absent with reason)','Repeat practical / lab exam','Improvement test','Assignment / project in lieu of CIA','Viva / presentation (exception)','Re-evaluation / re-totalling','Special / supplementary exam','Other exception'];
 const STU_REASONS = ['Medical','On duty (OD)','Absent','Failed — repeat','Improvement','Late admission','Sports / cultural','Other'];
 const STU_STATUS = ['Pending','Appeared','Absent again','Marks entered','Exempted'];
 const ADJ_TYPES = ['Substituted by a colleague','Swapped with a colleague','Rescheduled (make-up class)','Combined with another section','Conducted online','Assignment / self-study given','Skipped — not held'];
+const INST_TYPES = ['Academic — university / college','Premier institution (IIT / IISc / IISER / NIT)','National lab / R&D (CSIR, DRDO, BARC, ISRO…)','International','Industry','Funding agency / government','Other'];
+const INST_SHORT = { 'Academic — university / college':'Academic', 'Premier institution (IIT / IISc / IISER / NIT)':'Premier', 'National lab / R&D (CSIR, DRDO, BARC, ISRO…)':'National lab', 'International':'International', 'Industry':'Industry', 'Funding agency / government':'Agency', 'Other':'Other' };
+const COMM_MODES = ['Email sent','Email received','Call','Meeting','WhatsApp / message','Visit','Letter'];
 const DAY_OPTIONS = () => state.settings.timetable.mode === 'dayorder'
   ? Array.from({length: +state.settings.timetable.dayOrders || 6}, (_, i) => 'D' + (i + 1))
   : ['Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -1588,6 +1657,30 @@ const SCHEMA = {
 ,
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['date','start','end','courseId','kind','room'], sort:['date','desc'] },
+
+  qbank: { label:'Question banks & papers', one:'question bank / paper task',
+    fields:[
+      {k:'kind', label:'Task', type:'select', opts:QB_KINDS, def:'Question bank entry'},
+      {k:'courseId', label:'Course', type:'ref', ref:'courses', optional:true},
+      {k:'subject', label:'Course / paper (if not in your courses)', type:'text'},
+      {k:'exam', label:'For exam', type:'select', opts:['','CIA-I','CIA-II','CIA-III','Mid-semester','End-semester','Supplementary / repeat','Practical','Entrance / other'], def:''},
+      {k:'units', label:'Units / topics', type:'text', ph:'Units 1–3 · or all units'},
+      {k:'questionsRequired', label:'Questions required', type:'number'},
+      {k:'questionsDone', label:'Questions done so far', type:'number'},
+      {k:'pattern', label:'Pattern / blueprint', type:'text', full:true, ph:'Section A 10 × 2, Section B 5 × 8, Section C 2 × 15 · Bloom’s levels / CO mapping'},
+      {k:'coMapping', label:'CO / Bloom’s level mapping', type:'select', opts:['','Pending','Done','Not required'], def:''},
+      {k:'requestedBy', label:'Asked by', type:'text', ph:'COE, HoD, course coordinator'},
+      {k:'receivedOn', label:'Request received on', type:'date'},
+      {k:'dueDate', label:'Due date', type:'date', req:true},
+      {k:'dueTime', label:'Due by (time)', type:'time'},
+      {k:'submitMode', label:'Submit through', type:'select', opts:['','Exam portal','Email','Hard copy (sealed cover)','Moodle / Classroom','Pen drive / in person'], def:''},
+      {k:'portalLink', label:'Portal / submission link', type:'url'},
+      {k:'status', label:'Status', type:'select', opts:['Assigned','In progress','Draft ready','Submitted','Approved','Returned for revision','Cancelled'], def:'Assigned'},
+      {k:'submittedOn', label:'Submitted on', type:'date'},
+      {k:'reviewer', label:'Scrutiny / moderation by', type:'text'},
+      {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'docs', label:'Documents & links (draft paper, blueprint, answer key)', type:'links', full:true}
+    ], cols:['dueDate','kind','courseId','exam','qProg','submitMode','status'], sort:['dueDate','asc'] },
 
   repeatExams: { label:'CIA repeats & exceptions', one:'CIA repeat / exception',
     fields:[
@@ -1855,6 +1948,7 @@ const SCHEMA = {
       {k:'email', label:'Email', type:'email'},
       {k:'outcomes', label:'Outcomes (papers, visits, samples, proposals)', type:'textarea', full:true}
 ,
+      {k:'comms', label:'Emails & follow-up log', type:'commlog', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['name','institution','country','kind','area','status'], sort:['name','asc'] },
 
@@ -1901,14 +1995,29 @@ const SCHEMA = {
   contacts: { label:'Researcher contacts', one:'researcher',
     fields:[
       {k:'name', label:'Name', type:'text', req:true},
-      {k:'designation', label:'Designation', type:'text'},
-      {k:'institution', label:'Institution', type:'text'},
-      {k:'expertise', label:'Expertise / keywords', type:'text', full:true, ph:'Na-ion cathodes, XPS, DFT'},
-      {k:'relation', label:'Relation', type:'select', opts:['Potential collaborator','Collaborator','Potential reviewer / examiner','Former colleague','Industry contact','Resource person','Other'], def:'Potential collaborator'},
+      {k:'designation', label:'Designation', type:'text', ph:'Professor, Scientist-E, Associate Professor'},
+      {k:'department', label:'Department / division', type:'text'},
+      {k:'institution', label:'Institution / organisation', type:'text'},
+      {k:'instType', label:'Category', type:'select', opts:INST_TYPES, def:'Academic — university / college'},
+      {k:'city', label:'City', type:'text'},
+      {k:'country', label:'Country', type:'text', def:'India'},
       {k:'email', label:'Email', type:'email'},
+      {k:'phone', label:'Phone', type:'text'},
+      {k:'expertise', label:'Expertise / keywords', type:'text', full:true, ph:'Na-ion cathodes, XPS, DFT'},
+      {k:'facilities', label:'Facilities / instruments they can offer', type:'text', full:true, ph:'XPS, HRTEM, glovebox, battery cycler'},
+      {k:'relation', label:'Relation', type:'select', opts:['Potential collaborator','Collaborator','Co-PI / co-investigator','Mentor','Potential reviewer / examiner','Former colleague','Industry contact','Funding agency officer','Resource person','Other'], def:'Potential collaborator'},
+      {k:'howMet', label:'Met at / introduced by', type:'text'},
       {k:'profileLink', label:'Profile (Scholar / ORCID / page)', type:'url'},
-      {k:'notes', label:'Notes', type:'textarea', full:true}
-    ], cols:['name','institution','expertise','relation','email'], sort:['name','asc'] },
+      {k:'orcid', label:'ORCID / Scopus ID', type:'text'},
+      {k:'hIndex', label:'h-index (approx.)', type:'number'},
+      {k:'projectIds', label:'Connected proposals / projects', type:'multiref', ref:'projects', full:true},
+      {k:'callIds', label:'Connected funding calls', type:'multiref', ref:'fundingCalls', full:true},
+      {k:'nextFollowUp', label:'Next follow-up on', type:'date'},
+      {k:'followUpNote', label:'Follow-up about', type:'text'},
+      {k:'comms', label:'Emails & follow-up log', type:'commlog', full:true},
+      {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
+    ], cols:['name','institution','instShort','expertise','relation','lastComm','nextFu'], sort:['name','asc'] },
 
   metrics: { label:'Metrics history', one:'metrics snapshot',
     fields:[
@@ -1951,6 +2060,7 @@ const SCHEMA = {
       {k:'milestones', label:'Milestones / deliverables', type:'checklist', full:true},
       {k:'log', label:'Progress log', type:'log', full:true},
       {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'comms', label:'Emails & follow-up log', type:'commlog', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['title','agency','role','pi','projectMoney','keyDate','progress','status'], sort:['start','desc'] },
 
@@ -1972,6 +2082,7 @@ const SCHEMA = {
       {k:'eligibility', label:'Eligibility', type:'textarea', full:true, rows:2},
       {k:'link', label:'Call notice / portal', type:'url', full:true},
       {k:'notes', label:'Notes', type:'textarea', full:true},
+      {k:'comms', label:'Emails & follow-up log', type:'commlog', full:true},
       {k:'docs', label:'Documents & links (Google Drive / OneDrive)', type:'links', full:true}
     ], cols:['title','agency','callStage','opens','lastDate','targetSubmit','status'], sort:['lastDate','asc'] },
 
@@ -2114,7 +2225,7 @@ const SCHEMA = {
    Paste the Web App URL from your Apps Script deployment (see SETUP.md).
    While it still says PASTE_..., the app runs in LOCAL MODE: everything
    is kept in this browser only — handy for trying it out.             */
-const DATA_API_URL = 'https://script.google.com/macros/s/AKfycbxvNMJ0_4yHt3yViqSLCKSkyfAZxbpfn5DJPbNviltyp8oV9zCBIBOq1UuKAyglcFP6/exec';
+const DATA_API_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 // Must exactly match APP_KEY in backend/Code.gs.
 const APP_KEY = 'change-this-to-your-own-random-string';
 const TZ = 'Asia/Kolkata';
@@ -2176,7 +2287,7 @@ function toast(msg, bad, action){
 }
 function chip(status){ if(!status) return ''; return `<span class="chip ${STATUS_TONE[status] || ''}">${esc(status)}</span>`; }
 function catDot(c){ return `<span class="cat" style="color:var(--c-${c})"><i style="background:var(--c-${c})"></i>${esc(CAT_SHORT[c] || c)}</span>`; }
-const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending', achievement:'Course / certificate', adjust:'Class adjustment', repeat:'CIA repeat / exception', makeup:'Make-up class' };
+const CAT_SHORT = { classes:'Class', diary:'Diary', academic:'Calendar', exam:'Exam duty', evaluation:'Evaluation', mentoring:'Mentoring', meeting:'Meeting', action:'Action', reminder:'Reminder', review:'Review', conference:'Conference', project:'Project', publication:'Publication', plan:'Research plan', event:'Event', funding:'Funding call', classteacher:'Class follow-up', outside:'Outside campus', leave:'Leave & OD', minutes:'Minutes pending', achievement:'Course / certificate', adjust:'Class adjustment', repeat:'CIA repeat / exception', makeup:'Make-up class', followup:'Follow-up', qbank:'Question bank / paper' };
 function bar(pct, tone){ pct = Math.max(0, Math.min(100, pct || 0)); return `<div class="bar ${tone || ''}"><i style="width:${pct}%"></i></div>`; }
 async function sha(s){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -2550,15 +2661,15 @@ async function showInstallHelp(){
 const NAV = [
   ['dashboard','Dashboard'], ['notes','Notepad'], ['calendar','Calendar'], ['events','Events'], ['actions','Action items'], ['reminders','Reminders'], ['agenda','Alerts'], ['weekReview','Weekly review'],
   { g:'Teaching', items:[['academic','Academic calendar'],['timetable','Timetable'],['diary','Work diary'],['classAdjust','Class adjustments'],['courses','Courses'],['assessments','Marks']] },
-  { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations'],['repeatExams','CIA repeats & exceptions']] },
+  { g:'Examinations', items:[['examDuties','Exam duties'],['evaluations','Evaluations'],['qbank','Question banks & papers'],['repeatExams','CIA repeats & exceptions']] },
   { g:'Students', items:[['classTeacher','Class teacher'],['mentees','Mentees'],['mentorMeetings','Mentoring meetings']] },
-  { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences & workshops'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
+  { g:'Research', items:[['plans','Research plans'],['publications','Publications'],['collaborations','Collaborations'],['conferences','Conferences'],['reviews','Peer review & editorial'],['researcher','Researcher database']] },
   { g:'Projects & funding', items:[['projects','Projects & grants'],['fundingCalls','Funding calls']] },
   { g:'Administration', items:[['responsibilities','Responsibilities'],['meetings','Meetings'],['committees','Committees'],['offices','Units & offices'],['leaves','Leave & OD']] },
   { g:'Profile', items:[['achievements','Achievements']] },
   ['reports','Reports'], ['settings','Settings'], ['backup','Backup & restore']
 ];
-const NAV_DOT = { repeatExams:'repeat', dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', classAdjust:'adjust', repeatExams:'repeat', offices:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
+const NAV_DOT = { qbank:'qbank', repeatExams:'repeat', dashboard:'navy', calendar:'academic', agenda:'action', academic:'academic', timetable:'classes', diary:'diary', courses:'classes', examDuties:'exam', evaluations:'evaluation', mentees:'mentoring', mentorMeetings:'mentoring', plans:'plan', publications:'publication', collaborations:'review', conferences:'conference', reviews:'review', researcher:'publication', projects:'project', responsibilities:'meeting', committees:'meeting', meetings:'meeting', classTeacher:'mentoring', weekReview:'classes', assessments:'evaluation', leaves:'leave', achievements:'achievement', classAdjust:'adjust', repeatExams:'repeat', qbank:'qbank', offices:'meeting', notes:'reminder', events:'conference', fundingCalls:'project', actions:'action', reminders:'reminder', reports:'classes', settings:'academic', backup:'academic' };
 const NAV_ICON = {
   dashboard:'<path d="M3 3h6v8H3zM11 3h6v5h-6zM11 10h6v7h-6zM3 13h6v4H3z"/>',
   calendar:'<rect x="3" y="4" width="14" height="13" rx="2"/><path d="M3 8h14M7 2v4M13 2v4"/>',
@@ -2770,6 +2881,11 @@ function fieldHtml(coll, f, rec){
       input = `<div class="ck-list" id="lk_${f.k}">${items.map(linkRow).join('')}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn ghost sm" onclick="$('#lk_${f.k}').insertAdjacentHTML('beforeend', linkRow({}))">+ Add link</button><label class="btn ghost sm" style="cursor:pointer">⬆ Upload file<input type="file" hidden multiple onchange="uploadToDrive(this, '${coll}', '${f.k}')"></label><span class="upl-status faint" style="font-size:12px;align-self:center"></span></div><div class="help">Paste a share link from Google Drive, OneDrive / SharePoint, Dropbox or any website — or upload a file (up to 10 MB) and it is saved to your Drive folder “Faculty Workdesk files”.</div>`;
       break;
     }
+    case 'commlog': {
+      const items = Array.isArray(v) ? v : [];
+      input = `<div class="cm-list" id="cm_${f.k}">${items.map(commRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#cm_${f.k}').insertAdjacentHTML('afterbegin', commRow({date:today(), mode:'Email sent'}))">+ Log email / call</button><div class="help">Give a follow-up date and you are reminded on it until you tick it done.</div>`;
+      break;
+    }
     case 'log': {
       const items = Array.isArray(v) ? v : [];
       input = `<div class="ck-list" id="lg_${f.k}">${items.map(logRow).join('')}</div><button type="button" class="btn ghost sm" style="margin-top:6px" onclick="$('#lg_${f.k}').insertAdjacentHTML('afterbegin', logRow({date:today()}))">+ Add progress note</button>`;
@@ -2833,6 +2949,7 @@ function linksHtml(v, max){
   const a = (Array.isArray(v) ? v : []).filter(x => x.url); if(!a.length) return '';
   return `<span class="links">${a.slice(0, max || 9).map(x => `<a class="lk ${linkKind(x.url).toLowerCase()}" href="${esc(x.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(x.url)}"><b>${linkKind(x.url)}</b>${esc(x.label || 'Open')}</a>`).join('')}${a.length > (max || 9) ? `<span class="faint">+${a.length - max}</span>` : ''}</span>`;
 }
+function commRow(m){ return `<div class="cm-row"><input class="inp" type="date" value="${esc(m.date || '')}" title="Date"><select class="inp" title="How">${COMM_MODES.map(x => `<option ${x === (m.mode || 'Email sent') ? 'selected' : ''}>${x}</option>`).join('')}</select><input class="inp cm-sum" placeholder="Subject / what was said" value="${esc(m.summary || '')}"><input class="inp" type="url" placeholder="Email / thread link" value="${esc(m.link || '')}"><input class="inp" type="date" value="${esc(m.followUp || '')}" title="Follow up on"><label class="cm-done" title="Follow-up done"><input type="checkbox" ${m.done ? 'checked' : ''}> done</label><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
 function logRow(m){ return `<div class="log-row"><input class="inp" type="date" value="${esc(m.date || '')}"><input class="inp" placeholder="What progressed" value="${esc(m.note || '')}"><button type="button" class="iconbtn" onclick="this.parentNode.remove()" title="Remove">✕</button></div>`; }
 
 function readForm(coll, form, base){
@@ -2844,6 +2961,7 @@ function readForm(coll, form, base){
     else if(f.type === 'sessions') rec[f.k] = $$(`#ss_${f.k} .ss-row`, form).map(r => { const i = $$('input,select,textarea', r); let u = (i[3] && i[3].value || '').trim(); const notes = r.querySelector('textarea').value.trim(); const url = r.querySelector('input[type=url]').value.trim(); return { date: i[0].value, status: i[1].value, notes, url: url && !/^https?:/i.test(url) ? 'https://' + url : url }; }).filter(m => m.date || m.notes).sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1);
     else if(f.type === 'people') rec[f.k] = $$(`#pp_${f.k} .pp-row`, form).map(r => { const i = $$('input,select', r); return { name: i[0].value.trim(), role: i[1].value, institution: i[2].value.trim(), email: i[3].value.trim() }; }).filter(m => m.name);
     else if(f.type === 'links') rec[f.k] = $$(`#lk_${f.k} .lk-row`, form).map(r => { const i = $$('input', r); let u = i[1].value.trim(); if(u && !/^https?:\/\//i.test(u)) u = 'https://' + u; return { label: i[0].value.trim(), url: u }; }).filter(m => m.url);
+    else if(f.type === 'commlog') rec[f.k] = $$(`#cm_${f.k} .cm-row`, form).map(r => { const i = $$('input,select', r); return { date: i[0].value, mode: i[1].value, summary: i[2].value.trim(), link: i[3].value.trim(), followUp: i[4].value, done: i[5].checked }; }).filter(m => m.summary || m.link).sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1);
     else if(f.type === 'log') rec[f.k] = $$(`#lg_${f.k} .log-row`, form).map(r => { const i = $$('input', r); return { date: i[0].value, note: i[1].value.trim() }; }).filter(m => m.note).sort((a, b) => a.date < b.date ? 1 : -1);
     else { const el = form.elements[f.k]; if(el) rec[f.k] = el.value.trim ? el.value.trim() : el.value; }
   });
@@ -2914,7 +3032,7 @@ const DATE_SPEC = {
   events: ['start', 'end', 'time', 'endTime', 120], meetings: ['date', null, 'time', 'endTime', 60], examDuties: ['date', null, 'start', 'end', 180],
   leaves: ['from', 'to', null, null], conferences: ['start', 'end', null, null], schedule: ['date', 'endDate', 'start', 'end', 90],
   extraClasses: ['date', null, 'start', 'end', 60], mentorMeetings: ['date', null, 'time', null, 60], actions: ['due', null, 'time', null, 30],
-  reminders: ['date', null, 'time', null, 30], repeatExams: ['date', null, 'start', 'end', 60], classAdjust: ['makeupDate', null, 'makeupStart', 'makeupEnd', 60], diary: ['date', null, 'start', 'end', 60]
+  reminders: ['date', null, 'time', null, 30], qbank: ['dueDate', null, 'dueTime', null, 30], repeatExams: ['date', null, 'start', 'end', 60], classAdjust: ['makeupDate', null, 'makeupStart', 'makeupEnd', 60], diary: ['date', null, 'start', 'end', 60]
 };
 function recTitle(coll, r){ return coll === 'meetings' ? WD.meetingTitle(state.data, r) : coll === 'examDuties' ? (r.dutyType || 'Exam duty') + (r.exam ? ' — ' + r.exam : '') : coll === 'leaves' ? (r.type || 'Leave') : (r.title || r.name || r.reason || SCHEMA[coll].one); }
 function specRange(coll, r){
@@ -3019,7 +3137,7 @@ function editRecord(coll, id, preset){
   const rec = Object.assign({}, existing || {}, preset || {});
   if(coll === 'meetings' && rec.committeeId && !rec.kind) rec.kind = 'Committee meeting'; // meetings saved before types existed
   openModal(`<div class="mh"><h2>${existing ? 'Edit' : 'Add'} ${esc(sch.one)}</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
-    <form id="recForm" novalidate><div class="mb"><div id="formErr"></div><div class="fg">${sch.fields.map(f => fieldHtml(coll, f, rec) + (f.k === dayCheckAfter(coll) ? '<div id="dayCheck" style="grid-column:1/-1"></div>' : '')).join('')}</div>${existing && LINKABLE_PARENTS.includes(coll) ? connectedPanel(coll, id) : ''}${existing && (coll === 'students' || coll === 'mentees') ? studentHistory(coll, existing) : ''}</div>
+    <form id="recForm" novalidate><div class="mb"><div id="formErr"></div><div class="fg">${sch.fields.map(f => fieldHtml(coll, f, rec) + (f.k === dayCheckAfter(coll) ? '<div id="dayCheck" style="grid-column:1/-1"></div>' : '')).join('')}</div>${existing && ['projects','fundingCalls'].includes(coll) ? researchersPanel(coll, id) : ''}${existing && LINKABLE_PARENTS.includes(coll) ? connectedPanel(coll, id) : ''}${existing && (coll === 'students' || coll === 'mentees') ? studentHistory(coll, existing) : ''}</div>
     <div class="mf"><div class="left">${existing ? `<button type="button" class="btn danger sm" onclick="confirmDelete('${coll}','${id}')">Delete</button>` : ''}${FORM_EXTRAS[coll] ? FORM_EXTRAS[coll](rec) : ''}</div>
     <button type="button" class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" type="submit">Save</button></div></form>`);
   modalState = { coll, id, base: existing || {} };
@@ -3108,6 +3226,20 @@ function linkedItems(coll, id){
   if(coll === 'classGroups'){ L.classLog = state.data.classLog.filter(x => x.classId === id); L.students = state.data.students.filter(x => x.classId === id); }
   return L;
 }
+function researchersPanel(coll, id){
+  const key = coll === 'projects' ? 'projectIds' : 'callIds';
+  const L = state.data.contacts.filter(c => (c[key] || []).includes(id));
+  const others = state.data.contacts.filter(c => !(c[key] || []).includes(id)).sort((a, b) => a.name.localeCompare(b.name));
+  return `<div class="connected"><div class="cn-title">Researchers connected to this ${coll === 'projects' ? 'proposal / project' : 'call'} <span class="faint">${L.length}</span></div>
+    ${L.length ? L.map(c => { const m = (c.comms || []).filter(x => x.date).sort((a, b) => a.date < b.date ? 1 : -1)[0]; return `<button type="button" class="cn-item" onclick="closeModal();editRecord('contacts','${c.id}')"><span>${esc(INST_SHORT[c.instType] || '')}</span><span class="cn-t">${esc(c.name)}${c.institution ? ' — ' + esc(c.institution) : ''}${c.expertise ? ` <span class="faint">· ${esc(c.expertise)}</span>` : ''}</span>${m ? `<span class="faint" style="font-size:12px">${fdate(m.date, 'short')}</span>` : ''}</button>`; }).join('') : '<div class="faint" style="font-size:12.5px">None linked yet.</div>'}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${others.length ? `<select class="inp" style="max-width:280px" id="rpPick"><option value="">Link a researcher from your database…</option>${others.map(c => `<option value="${c.id}">${esc(c.name + (c.institution ? ' — ' + c.institution : ''))}</option>`).join('')}</select><button type="button" class="btn ghost sm" onclick="linkResearcher('${coll}','${id}')">Link</button>` : ''}<button type="button" class="btn ghost sm" onclick="closeModal();editRecord('contacts', null, {${key}:['${id}']})">+ New researcher</button></div></div>`;
+}
+const linkResearcher = guard(async (coll, id) => {
+  const cid = ($('#rpPick') || {}).value; if(!cid) return toast('Pick a researcher first.', true);
+  const c = WD.byId(state.data, 'contacts', cid), key = coll === 'projects' ? 'projectIds' : 'callIds';
+  await store.upsert('contacts', Object.assign({}, c, { [key]: [...new Set([...(c[key] || []), id])] }));
+  closeModal(); editRecord(coll, id); toast(`${c.name} linked`);
+});
 function connectedPanel(coll, id){
   const L = linkedItems(coll, id), t = today();
   const sec = (c, label, items, line) => `<div class="cn-sec"><div class="cn-head"><b>${label}</b> <span class="faint">${items.length}</span><button type="button" class="btn ghost sm" onclick="addLinked('${c}','${coll}','${id}')">+ Add</button></div>${items.length ? items.slice(0, 8).map(r => `<button type="button" class="cn-item" onclick="closeModal();editRecord('${c}','${r.id}')">${line(r)}</button>`).join('') + (items.length > 8 ? `<div class="faint" style="font-size:12px;padding:2px 8px">+${items.length - 8} more</div>` : '') : ''}</div>`;
@@ -3175,6 +3307,10 @@ const clearBrokenLinks = guard(async () => {
 
 /* ============================ GENERIC LIST ============================ */
 const VIRTUAL = {
+  qProg: (coll, r) => { const req = +r.questionsRequired || 0, d = Math.min(+r.questionsDone || 0, req || 1e9); if(['Submitted','Approved'].includes(r.status)) return '<span class="chip ok">✓ ' + (req ? req + ' done' : 'done') + '</span>'; if(!req) return '<span class="faint">—</span>'; const p = Math.round(d * 100 / req); return `<div style="min-width:110px"><div style="font-size:12px">${d}/${req} questions</div>${bar(p)}</div>`; },
+  nextFu: (coll, r) => { const d = [r.nextFollowUp, ...(r.comms || []).filter(m => !m.done).map(m => m.followUp)].filter(x => WD.validDate(x)).sort()[0]; return d ? `<span style="${d < today() ? 'color:var(--bad);font-weight:600' : d === today() ? 'color:var(--warn);font-weight:600' : ''}">${fdate(d, 'short')}</span>` : '<span class="faint">—</span>'; },
+  instShort: (coll, r) => r.instType ? `<span class="chip ${({ 'Premier':'navy', 'National lab':'warn', 'International':'ok' })[INST_SHORT[r.instType]] || ''}">${esc(INST_SHORT[r.instType] || r.instType)}</span>` : '<span class="faint">—</span>',
+  lastComm: (coll, r) => { const m = (r.comms || []).filter(x => x.date).sort((a, b) => a.date < b.date ? 1 : -1)[0]; return m ? `${fdate(m.date, 'short')} <span class="faint">${esc(m.mode.replace('Email ', '✉ '))}</span>` : '<span class="faint">—</span>'; },
   schedTime: (coll, r) => r.start ? esc(ftime(r.start) + (r.end ? '–' + ftime(r.end) : '')) : '<span class="faint">—</span>',
   achWhen: (coll, r) => { const d = r.date || r.end; return d ? fdate(d) + (!r.date && r.end ? ' <span class="faint">(ends)</span>' : '') : '<span class="faint">—</span>'; },
   achKind: (coll, r) => esc(String(r.kind || '').replace(/\s*\(.*\)$/, '')),
@@ -3216,7 +3352,7 @@ const VIRTUAL = {
   next: (coll, r) => { const d = WD.nextOccurrence(r, (r.repeat || 'None') === 'None' ? r.date : today()); return d ? `${fdate(d, 'dow')}${r.time ? ' ' + ftime(r.time) : ''}` : ''; },
   done: (coll, r) => (r.repeat || 'None') === 'None' ? (r.done ? chip('Done') : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')">Mark done</button>`) : `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${r.id}')" title="Skip to the next occurrence">Done for this time</button>`
 };
-const VIRTUAL_LABEL = { schedTime:'Time', certState:'Certificate', achWhen:'Date', achKind:'Type', minutesState:'Minutes', leaveDays:'Days', marksDone:'Marks', courseLinks:'Links', linkName:'Linked to', linkedSum:'Connected items', classStrength:'Students', lastFollow:'Last follow-up', studentsNamed:'Students', rowActs:'', remState:'State', projectMoney:'Amount', keyDate:'Key date', callStage:'Next step', filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
+const VIRTUAL_LABEL = { qProg:'Progress', nextFu:'Next follow-up', instShort:'Category', lastComm:'Last contact', schedTime:'Time', certState:'Certificate', achWhen:'Date', achKind:'Type', minutesState:'Minutes', leaveDays:'Days', marksDone:'Marks', courseLinks:'Links', linkName:'Linked to', linkedSum:'Connected items', classStrength:'Students', lastFollow:'Last follow-up', studentsNamed:'Students', rowActs:'', remState:'State', projectMoney:'Amount', keyDate:'Key date', callStage:'Next step', filed:'Filed in', createdAt:'Written', meetingName:'Meeting', paperworkProg:'Paperwork', progress:'Progress', lastMet:'Last met', nextMeeting:'Next meeting', next:'Next', done:'' };
 function lastMetDate(menteeId){ let d = null; state.data.mentorMeetings.forEach(m => { if(m.status === 'Held' && (m.menteeIds || []).includes(menteeId) && (!d || m.date > d)) d = m.date; }); return d; }
 
 function cellHtml(coll, k, r){
@@ -3237,6 +3373,7 @@ function cellHtml(coll, k, r){
     case 'sessions': { const a = v || []; return a.length ? a.length + ' recorded' : '<span class="faint">—</span>'; }
     case 'people': { const a = v || []; return a.length ? esc(a.map(p => p.name + (p.role ? ' (' + p.role + ')' : '')).join(', ')) : '<span class="faint">—</span>'; }
     case 'stulist': { const a = v || []; if(!a.length) return '<span class="faint">—</span>'; const pend = a.filter(p => !p.status || p.status === 'Pending').length; return `${a.length} student${a.length > 1 ? 's' : ''}${pend && pend < a.length ? ` · <span style="color:var(--warn)">${pend} pending</span>` : ''}<div class="faint" style="font-size:12px">${esc(a.slice(0, 3).map(p => p.name).join(', ') + (a.length > 3 ? '…' : ''))}</div>`; }
+    case 'commlog': { const a = v || []; if(!a.length) return '<span class="faint">—</span>'; const open = a.filter(m => !m.done && m.followUp).length; return `${a.length} entr${a.length > 1 ? 'ies' : 'y'}${open ? ` · <span style="color:var(--warn)">${open} to follow up</span>` : ''}`; }
     case 'checklist': { const a = v || []; return a.length ? `${a.filter(x => x.done).length}/${a.length} done` : '<span class="faint">—</span>'; }
     case 'url': return `<a href="${esc(v)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open ↗</a>`;
     case 'email': return `<a href="mailto:${esc(v)}" onclick="event.stopPropagation()">${esc(v)}</a>`;
@@ -3311,6 +3448,7 @@ function rowsForExport(coll, rows){
       else if(f.type === 'multiref') v = (v || []).map(id => refLabel(f.ref, WD.byId(state.data, f.ref, id))).join(', ');
       else if(f.type === 'checklist') v = (v || []).map(m => `${m.done ? '[x]' : '[ ]'} ${m.text}${m.due ? ' (' + m.due + ')' : ''}`).join('\n');
       else if(f.type === 'log') v = (v || []).map(m => `${m.date}: ${m.note}`).join('\n');
+      else if(f.type === 'commlog') v = (v || []).map(m => [m.date, m.mode, m.summary, m.followUp && 'follow up ' + m.followUp + (m.done ? ' (done)' : ''), m.link].filter(Boolean).join(' · ')).join('\n');
       else if(f.type === 'links') v = (v || []).map(m => `${m.label ? m.label + ': ' : ''}${m.url}`).join('\n');
       else if(f.type === 'parent') v = WD.linkName(state.data, v);
       else if(f.type === 'sessions') v = (v || []).map(m => `${m.date} (${m.status}): ${m.notes}${m.url ? ' ' + m.url : ''}`).join('\n');
@@ -3349,7 +3487,7 @@ function runSearch(q){
 document.addEventListener('click', e => { const p = $('#searchPanel'); if(p && !e.target.closest('.search')) p.classList.remove('open'); const m = $('#qaMenu'); if(m && !e.target.closest('#qaWrap')) m.remove(); });
 
 /* ============================ QUICK ADD ============================ */
-const QUICK = [['repeatExams','CIA repeat / exception (students)'],['classAdjust','Class adjustment / skipped class'],['leaves','Leave / OD'],['achievements','Achievement / certificate'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
+const QUICK = [['qbank','Question bank / paper due'],['repeatExams','CIA repeat / exception (students)'],['classAdjust','Class adjustment / skipped class'],['leaves','Leave / OD'],['achievements','Achievement / certificate'],['classLog','Class follow-up'],['events','Event'],['fundingCalls','Funding call'],['diary','Log a class (work diary)'],['extraClasses','Extra / additional class'],['reminders','Reminder'],['actions','Action item'],['examDuties','Exam duty'],['evaluations','Evaluation'],['mentorMeetings','Mentoring meeting'],['meetings','Meeting'],['publications','Publication'],['conferences','Conference / workshop'],['reviews','Review invitation'],['holidays','Holiday'],['schedule','Academic schedule entry']];
 function toggleQuickBottom(){
   const m = $('#qaBottom'); if(m) return m.remove();
   document.body.insertAdjacentHTML('beforeend', `<div class="menu qa-bottom" id="qaBottom">${QUICK.map(([c, l]) => `<button onclick="$('#qaBottom').remove();editRecord('${c}', null, ${['diary','reminders','holidays','schedule','meetings','classLog'].includes(c) ? `{date:'${today()}'}` : c === 'actions' ? `{due:'${today()}'}` : c === 'leaves' ? `{from:'${today()}'}` : c === 'events' ? `{start:'${today()}'}` : 'null'})">${esc(l)}</button>`).join('')}</div>`);
@@ -3380,7 +3518,8 @@ function agendaItemHtml(i, showDate){
   const click = i.ref ? `openRef('${i.ref.coll}','${i.ref.id}')` : (i.view ? `go('${i.view}')` : '');
   const right = i.ref && i.ref.coll === 'actions' ? `<button class="btn ghost sm" onclick="event.stopPropagation();quickDone('actions','${i.ref.id}')">Done</button>`
     : i.ref && i.ref.coll === 'reminders' ? `<button class="btn ghost sm" onclick="event.stopPropagation();markReminder('${i.ref.id}')">Done</button>`
-    : i.ref && ['meetings','events'].includes(i.ref.coll) && ['meeting','event','minutes'].includes(i.cat) && i.date && i.date <= today() && !/report pending/i.test(i.title) && !attendedOn(i.ref.coll, i.ref.id, i.occurrence || i.date) ? `<button class="btn ghost sm" title="Mark that you attended" onclick="event.stopPropagation();markAttended('${i.ref.coll}','${i.ref.id}','${i.occurrence || i.date}')">Attended</button>` : '';
+    : i.cat === 'followup' && i.ref ? `<button class="btn ghost sm" onclick="event.stopPropagation();followDone('${i.ref.coll}','${i.ref.id}','${i.ref.sub || ''}')">Done</button>`
+    : i.ref && ['meetings','events'].includes(i.ref.coll) && ['meeting','event','minutes'].includes(i.cat) && i.date && i.date < today() && !/report pending/i.test(i.title) && (i.cat === 'minutes' || !notBusy(i)) && !attendedOn(i.ref.coll, i.ref.id, i.occurrence || i.date) ? `<button class="btn ghost sm" title="Mark that you attended" onclick="event.stopPropagation();markAttended('${i.ref.coll}','${i.ref.id}','${i.occurrence || i.date}')">Attended</button>` : '';
   const ovi = i.ref && i.ref.id && !String(i.ref.id).startsWith('new:') && i.date >= today() && !['classes','adjust','minutes','diary'].includes(i.cat) && !(i.spanDay > 1) && !i.ongoing ? overlapFor(i.ref.coll, i.ref.id, i.occurrence || null) : null;
   const uid = 'ova_' + (i.ref ? i.ref.coll + '_' + i.ref.id : '') + '_' + (i.occurrence || i.date) + '_' + (i.cat || '');
   return `<div class="tli ${click ? 'click' : ''}" ${click ? `onclick="${click}"` : ''}>
@@ -3399,6 +3538,15 @@ const markAttended = guard(async (coll, id, d) => {
   } else upd.status = 'Attended';
   await store.upsert(coll, upd);
   toast(`Marked as attended — ${fdate(d, 'short')}`, false, { label: coll === 'meetings' ? 'Add minutes' : 'Add notes', fn: () => editRecord(coll, id) });
+});
+/* a follow-up is done: tick it in the log (or clear the contact's next follow-up), keeping the history */
+const followDone = guard(async (coll, id, sub) => {
+  const r = WD.byId(state.data, coll, id); if(!r) return;
+  const copy = JSON.parse(JSON.stringify(r)), upd = Object.assign({}, r);
+  if(/^comm\d+$/.test(sub)){ const k = +sub.slice(4); upd.comms = (r.comms || []).map((m, n) => n === k ? Object.assign({}, m, { done: true }) : m); }
+  else { upd.comms = [{ date: today(), mode: 'Email sent', summary: 'Followed up' + (r.followUpNote ? ': ' + r.followUpNote : ''), link: '', followUp: '', done: true }, ...(r.comms || [])]; upd.nextFollowUp = ''; upd.followUpNote = ''; }
+  await store.upsert(coll, upd);
+  toast('Follow-up marked done', false, { label: 'Undo', fn: () => store.upsert(coll, copy) });
 });
 function openRef(coll, id){ closeDrawer(); if(coll === 'slots'){ go('timetable'); return; }
   if(coll === 'extraClasses' && String(id).startsWith('new:mk:')){ const [cid, d] = String(id).slice(7).split('|'); scheduleMakeup(cid, d); return; } if(coll === 'classAdjust' && String(id).startsWith('new:')){ newAdjustment(String(id).slice(4)); return; } editRecord(coll, id); }
@@ -3552,7 +3700,7 @@ VIEWS.dashboard = () => {
     const ended = (WD.minutes(s.end) || 0) <= now.mins;
     todayItems.push({ sort: WD.minutes(s.start), html: `<div class="tli"><div class="tm">${ftime(s.start)}</div><div class="bd">${catDot('classes')}<div class="tt">${esc(courseName(s.courseId))}</div><div class="dt">${[ftime(s.start) + '–' + ftime(s.end), s.room && (/^(room|lab|hall|block|online)/i.test(s.room) ? s.room : 'Room ' + s.room), s.batch && 'Batch ' + s.batch, s.kind !== 'Regular' && s.kind].filter(Boolean).map(esc).join(' · ')}</div>
       ${s.adjust ? `<div class="adj-note">${esc(s.adjust.type)}${s.adjust.colleague ? ' — ' + esc(s.adjust.colleague) : ''}${s.adjust.makeupDate ? ' · make-up ' + fdate(s.adjust.makeupDate, 'short') : ''}</div>` : ''}</div>
-      <div class="rt">${courseLinks(WD.byId(state.data, 'courses', s.courseId), true)}${e ? `<button class="btn ghost sm" onclick="editRecord('diary','${e.id}')">${e.status === 'Conducted' ? '✓ Logged' : esc(e.status)}</button>` : s.adjust && s.adjust.type !== 'Conducted online' ? `<button class="btn ghost sm" onclick="editRecord('classAdjust','${s.adjust.id}')">Adjusted</button>` : `<button class="btn ${ended ? '' : 'ghost'} sm" onclick="logSession('${s.key}')">Log</button>${ended ? '' : `<button class="btn ghost sm" title="Substitution, swap, make-up or skip" onclick="newAdjustment('${s.key}')">Adjust</button>`}`}</div></div>` });
+      <div class="rt">${courseLinks(WD.byId(state.data, 'courses', s.courseId), true)}${e ? `<button class="btn ghost sm" onclick="editRecord('diary','${e.id}')">${e.status === 'Conducted' ? '✓ Logged' : esc(e.status)}</button>` : s.adjust && s.adjust.type !== 'Conducted online' ? `<button class="btn ghost sm" onclick="editRecord('classAdjust','${s.adjust.id}')">Adjusted</button>` : `<button class="btn ghost sm" onclick="logSession('${s.key}')">Log</button>${ended ? '' : `<button class="btn ghost sm" title="Substitution, swap, make-up or skip" onclick="newAdjustment('${s.key}')">Adjust</button>`}`}</div></div>` });
   });
   A.today.forEach(i => todayItems.push({ sort: WD.minutes(i.time) === null ? 2000 : WD.minutes(i.time), html: agendaItemHtml(i, false) }));
   todayItems.sort((a, b) => a.sort - b.sort);
@@ -3652,7 +3800,7 @@ VIEWS.calendar = () => {
   const st = WD.dayStatus(state.data, state.settings, sel), key = WD.dayKeyFor(state.data, state.settings, sel);
   const didx = WD.diaryIndex(state.data);
   const side = `<div class="card"><h3>${fdate(sel, 'long')}</h3><div style="margin-bottom:8px">${st.teaching ? `<span class="chip navy">${dayKeyLabel(key)}</span>` : `<span class="chip warn">${esc(st.reason)}</span>`}</div>
-    ${sItems.length ? `<div class="tl">${sItems.map(i => i.cat === 'classes' && i.session ? `<div class="tli"><div class="tm">${ftime(i.time)}</div><div class="bd">${catDot('classes')}<div class="tt">${esc(i.title)}</div><div class="dt">${esc(i.detail)}</div></div><div class="rt">${didx[i.session.key] ? `<button class="btn ghost sm" onclick="editRecord('diary','${didx[i.session.key].id}')">✓ Logged</button>` : sel <= t ? `<button class="btn sm" onclick="logSession('${i.session.key}')">Log</button>` : ''}</div></div>` : agendaItemHtml(i, false)).join('')}</div>` : '<div class="empty" style="padding:12px">Nothing on this day.</div>'}
+    ${sItems.length ? `<div class="tl">${sItems.map(i => i.cat === 'classes' && i.session ? `<div class="tli"><div class="tm">${ftime(i.time)}</div><div class="bd">${catDot('classes')}<div class="tt">${esc(i.title)}</div><div class="dt">${esc(i.detail)}</div></div><div class="rt">${didx[i.session.key] ? `<button class="btn ghost sm" onclick="editRecord('diary','${didx[i.session.key].id}')">✓ Logged</button>` : sel <= t ? `<button class="btn ghost sm" onclick="logSession('${i.session.key}')">Log</button>` : ''}</div></div>` : agendaItemHtml(i, false)).join('')}</div>` : '<div class="empty" style="padding:12px">Nothing on this day.</div>'}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px"><button class="btn ghost sm" onclick="editRecord('extraClasses',null,{date:'${sel}'})">+ Extra class</button><button class="btn ghost sm" onclick="editRecord('reminders',null,{date:'${sel}'})">+ Reminder</button><button class="btn ghost sm" onclick="editRecord('schedule',null,{date:'${sel}'})">+ Schedule entry</button><button class="btn ghost sm" onclick="editRecord('holidays',null,{date:'${sel}'})">+ Holiday</button></div></div>`;
   const label = ['January','February','March','April','May','June','July','August','September','October','November','December'][+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4);
   return pageHead('Calendar', 'Everything with a date — classes, duties, meetings, deadlines, holidays', `<button class="btn ghost sm" onclick="exportIcs()">⬇ Export to calendar (.ics)</button>`) +
@@ -3984,6 +4132,16 @@ VIEWS.achievements = () => {
   else body = listTable('achievements', { emptyHint: 'Course completions (NPTEL, SWAYAM, Coursera), FDP and workshop certificates, professional certifications, awards, best-paper awards, recognitions, memberships, patents and invited talks — each with the certificate link, ready for appraisal and NAAC files.' });
   return pageHead('Achievements & certificates', 'Courses completed, certificates, awards and recognitions — with the certificate copy on file') + tb.html + sum + body;
 };
+VIEWS.qbank = () => {
+  const L = state.data.qbank, t = today(), done = x => ['Submitted','Approved','Cancelled'].includes(x.status);
+  const open = L.filter(x => !done(x)), late = open.filter(x => x.dueDate < t), week = open.filter(x => x.dueDate >= t && x.dueDate <= WD.addDays(t, 7));
+  const need = open.reduce((n, x) => n + Math.max(0, (+x.questionsRequired || 0) - (+x.questionsDone || 0)), 0);
+  const tb = tabs('qbank', [['open', 'To do' + (open.length ? ' (' + open.length + ')' : '')], ['done', 'Submitted'], ['all', 'All']]);
+  const sum = open.length ? `<div class="muted" style="font-size:13px;margin:-4px 0 12px">${open.length} open${week.length ? ` · <b style="color:var(--warn)">${week.length} due this week</b>` : ''}${late.length ? ` · <b style="color:var(--bad)">${late.length} overdue</b>` : ''}${need ? ` · ${need} questions still to write` : ''}</div>` : '';
+  const filter = tb.cur === 'open' ? (x => !done(x)) : tb.cur === 'done' ? done : null;
+  return pageHead('Question banks & papers', 'Question bank entries, question papers, answer keys and scrutiny — with the due dates, progress and how to submit. Due dates are on your calendar and reminded.')
+    + tb.html + sum + listTable('qbank', Object.assign({ preset: { receivedOn: t, status: 'Assigned' }, emptyHint: 'Add each question bank entry or question paper you are asked for — the course, exam, units, how many questions, the pattern, the due date and how to submit it.' }, filter ? { filter } : {}));
+};
 VIEWS.repeatExams = () => {
   const L = state.data.repeatExams, done = x => ['Marks submitted','Cancelled'].includes(x.status);
   const open = L.filter(x => !done(x)), noDate = open.filter(x => !WD.validDate(x.date));
@@ -4014,7 +4172,15 @@ VIEWS.researcher = () => {
       ${mt.length ? `<div class="tw"><table class="t"><thead><tr><th>Source</th><th>As on</th><th>Docs</th><th>Citations</th><th>h</th><th>i10</th></tr></thead><tbody>${mt.map(([s, m]) => `<tr onclick="editRecord('metrics','${m.id}')"><td><b style="font-weight:600">${s}</b></td><td>${fdate(m.date)}</td><td>${esc(m.documents || '')}</td><td>${esc(m.citations || '')}</td><td>${esc(m.hIndex || '')}</td><td>${esc(m.i10 || '')}</td></tr>`).join('')}</tbody></table></div>${sparkline()}` : '<div class="muted" style="font-size:13.5px">Record your h-index and citations now and then — the history builds a trend line here (useful for appraisals and proposals).</div>'}</div>
       <div class="card"><h3>From this app</h3><dl class="kv"><dt>Publications</dt><dd>${state.data.publications.filter(p => p.status === 'Published').length} published · ${state.data.publications.filter(p => ['Submitted','Under review','Revision requested','Accepted'].includes(p.status)).length} in pipeline</dd><dt>Projects</dt><dd>${state.data.projects.filter(p => ['Sanctioned','Ongoing','Completed'].includes(p.status)).length} funded · ${money(state.data.projects.filter(p => ['Sanctioned','Ongoing','Completed'].includes(p.status)).reduce((a, p) => a + (+p.amount || 0), 0)) || '₹0'} total</dd><dt>Collaborations</dt><dd>${state.data.collaborations.length}</dd><dt>Talks & events</dt><dd>${state.data.conferences.filter(c => ['Attended','Presented'].includes(c.status)).length}</dd><dt>Reviews</dt><dd>${state.data.reviews.filter(r => r.status === 'Submitted').length} submitted</dd><dt>Awards & certificates</dt><dd>${state.data.achievements.filter(a => ['Award / honour','Best paper / poster award','Recognition / appreciation','Fellowship / membership'].includes(a.kind) && a.status === 'Awarded').length} awards · ${state.data.achievements.filter(a => a.status === 'Certificate received').length} certificates</dd></dl></div></div></div>`;
   } else if(tb.cur === 'metrics') body = listTable('metrics', { preset: { date: today() } });
-  else body = listTable('contacts', { emptyHint: '<div>People you may collaborate with, invite as resource persons, or suggest as reviewers/examiners.</div>' });
+  else {
+    const cur = state.filters.instType || 'all', C = state.data.contacts;
+    const cats = [['all','All'], ...INST_TYPES.map(x => [x, INST_SHORT[x]])].filter(([k]) => k === 'all' || C.some(c => c.instType === k) || ['Academic — university / college','Premier institution (IIT / IISc / IISER / NIT)','National lab / R&D (CSIR, DRDO, BARC, ISRO…)','International'].includes(k));
+    const n = k => k === 'all' ? C.length : C.filter(c => (c.instType || 'Academic — university / college') === k).length;
+    const fu = C.filter(c => (c.comms || []).some(m => !m.done && m.followUp) || c.nextFollowUp).length;
+    body = `<div class="ctype-bar">${cats.map(([k, l]) => `<button class="chipbtn ${cur === k ? 'on' : ''}" onclick="state.filters.instType='${k.replace(/'/g, "\\'")}';rerender()">${esc(l)} <span>${n(k)}</span></button>`).join('')}</div>`
+      + (fu ? `<div class="muted" style="font-size:13px;margin:0 0 10px">${fu} researcher${fu > 1 ? 's' : ''} with a follow-up pending</div>` : '')
+      + listTable('contacts', Object.assign({ preset: cur === 'all' ? {} : { instType: cur }, emptyHint: '<div>People you may collaborate with, invite as resource persons, suggest as reviewers / examiners, or bring into a proposal — with their category (academic, premier institution, national lab, international, industry), the proposals and funding calls they are connected to, and your emails and follow-ups.</div>' }, cur === 'all' ? {} : { filter: c => (c.instType || 'Academic — university / college') === cur }));
+  }
   return pageHead("Researcher database", 'Your research identity, metrics over time, and a contact book of researchers') + tb.html + body;
 };
 function sparkline(){
@@ -4449,22 +4615,9 @@ function changePin(){
 function exportIcs(){
   const t = today(), to = WD.addDays(t, 180);
   const items = WD.buildAgenda(state.data, state.settings, t, { from: t, to, ignoreLead: true, allCats: true, includeOverdue: false });
-  const e = s => String(s || '').replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
-  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Faculty Workdesk//EN','CALSCALE:GREGORIAN','X-WR-CALNAME:Faculty Workdesk','X-WR-TIMEZONE:Asia/Kolkata'];
-  items.filter(i => !i.ongoing).forEach((i, n) => {
-    const d = i.date.replace(/-/g, '');
-    lines.push('BEGIN:VEVENT', `UID:wd-${i.cat}-${(i.ref && i.ref.id) || n}-${d}-${(i.time || '').replace(':', '')}@workdesk`, 'DTSTAMP:' + stamp);
-    if(i.time){ const end = i.end || (WD.pad(Math.min(23, Math.floor((WD.minutes(i.time) + 60) / 60))) + ':' + WD.pad((WD.minutes(i.time) + 60) % 60)); lines.push(`DTSTART;TZID=Asia/Kolkata:${d}T${i.time.replace(':', '')}00`, `DTEND;TZID=Asia/Kolkata:${d}T${end.replace(':', '')}00`); }
-    else lines.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${WD.addDays(i.spanEnd && i.spanEnd > i.date ? i.spanEnd : i.date, 1).replace(/-/g, '')}`);
-    lines.push('SUMMARY:' + e(i.title), 'DESCRIPTION:' + e((CAT_SHORT[i.cat] || '') + (i.detail ? ' — ' + i.detail : '')), 'CATEGORIES:' + e(CAT_SHORT[i.cat] || i.cat), 'END:VEVENT');
-  });
-  lines.push('END:VCALENDAR');
-  const fold = l => { const out = []; while(l.length > 74){ out.push(l.slice(0, 74)); l = ' ' + l.slice(74); } out.push(l); return out.join('\r\n'); };
-  download(`workdesk-${t}.ics`, lines.map(fold).join('\r\n'), 'text/calendar');
+  download(`workdesk-${t}.ics`, WD.toIcs(items, CAT_SHORT, 'Faculty Workdesk', new Date().toISOString()), 'text/calendar');
   toast(`${items.length} events for the next 6 months exported`);
 }
-
 /* ---------------- CLASS TEACHER ---------------- */
 VIEWS.classTeacher = () => {
   const classes = state.data.classGroups.slice().sort((a, b) => ((a.status === 'Completed') - (b.status === 'Completed')) || String(a.name).localeCompare(String(b.name)));
@@ -4584,8 +4737,13 @@ function buildSample(){
   out.reviews.push(mk({ journal: 'Journal of Energy Storage', role: 'Reviewer', manuscript: 'EST-D-26-04521', invited: D(-8), due: D(5), status: 'Accepted', round: '1' }));
   out.reviews.push(mk({ journal: 'Ionics', role: 'Reviewer', manuscript: 'IONI-2026-1120', invited: D(-40), due: D(-26), status: 'Submitted', round: '1' }));
   out.reviews.push(mk({ journal: 'Materials Today: Proceedings', role: 'Guest editor', manuscript: 'Special issue — ICEM 2026', status: 'Active' }));
-  out.contacts.push(mk({ name: 'Dr. S. Rao', designation: 'Associate Professor', institution: 'NIT Trichy', expertise: 'DFT, cathode modelling', relation: 'Potential collaborator' }));
-  out.contacts.push(mk({ name: 'Dr. A. Fernandes', designation: 'Scientist', institution: 'CSIR-CECRI', expertise: 'Na-ion pouch cells', relation: 'Potential reviewer / examiner' }));
+  if(out.courses[0]){
+    out.qbank.push(mk({ kind: 'Question bank entry', courseId: out.courses[0].id, exam: 'End-semester', units: 'All units', questionsRequired: '40', questionsDone: '18', pattern: 'Section A 10 × 2, Section B 5 × 8, Section C 2 × 15 · CO-mapped', coMapping: 'Pending', requestedBy: 'COE', receivedOn: D(-10), dueDate: D(5), submitMode: 'Exam portal', status: 'In progress' }));
+    out.qbank.push(mk({ kind: 'Question paper setting', courseId: out.courses[0].id, exam: 'CIA-II', units: 'Units 3–4', pattern: '50 marks · 2 sections', requestedBy: 'HoD', receivedOn: D(-3), dueDate: D(2), dueTime: '17:00', submitMode: 'Hard copy (sealed cover)', status: 'Draft ready' }));
+  }
+  out.contacts.push(mk({ name: 'Dr. S. Rao', designation: 'Associate Professor', institution: 'NIT Trichy', city: 'Tiruchirappalli', country: 'India', instType: 'Premier institution (IIT / IISc / IISER / NIT)', expertise: 'DFT, cathode modelling', relation: 'Potential collaborator', comms: [{ date: D(-6), mode: 'Email sent', summary: 'Asked about DFT support for the cathode proposal', link: '', followUp: D(2), done: false }] }));
+  out.contacts.push(mk({ name: 'Dr. A. Fernandes', designation: 'Scientist', institution: 'CSIR-CECRI', city: 'Karaikudi', country: 'India', instType: 'National lab / R&D (CSIR, DRDO, BARC, ISRO…)', expertise: 'Na-ion pouch cells', facilities: 'Pouch-cell line, glovebox', relation: 'Potential reviewer / examiner' }));
+  out.contacts.push(mk({ name: 'Prof. M. Tanaka', designation: 'Professor', institution: 'Kyoto University', city: 'Kyoto', country: 'Japan', instType: 'International', expertise: 'Solid electrolytes, NMR', relation: 'Potential collaborator', howMet: 'ICEM 2025, Chennai' }));
   [[-365, 210, 7, 6], [-180, 268, 8, 7], [-20, 331, 9, 8]].forEach(([n, c, h, i10]) => out.metrics.push(mk({ date: D(n), source: 'Scopus', citations: String(c), hIndex: String(h), i10: String(i10), documents: String(14 + Math.round((n + 365) / 120)) })));
   // events across categories
   [['FDP on Outcome-Based Education', 'FDP / training programme', 'Participant', 6, 8, 'IQAC, Christ University'],
@@ -4702,6 +4860,7 @@ const RS = {
   mentorMeetings:  { label:'Mentoring meetings', date:r => r.date, title:r => (r.kind || 'Meeting') + ' — ' + menteeNames(r), status:r => r.status, detail:r => [r.agenda, r.notes, r.actions && 'Actions: ' + r.actions].filter(Boolean).join(' | ') },
   classLog:        { label:'Class-teacher follow-ups', date:r => r.date, title:r => ((WD.byId(state.data, 'classGroups', r.classId) || {}).name || 'Class') + ' — ' + (r.kind || ''), status:r => r.status, detail:r => [(r.studentIds || []).map(id => (WD.byId(state.data, 'students', id) || {}).name).filter(Boolean).join(', '), r.summary, r.action && 'Action: ' + r.action].filter(Boolean).join(' | ') },
   achievements:    { label:'Achievements & certificates', date:r => r.date || r.end || r.start, title:r => r.title, status:r => r.status, detail:r => [r.kind, r.issuer, r.level, r.duration, r.grade && 'Grade: ' + r.grade, r.certNo && 'No. ' + r.certNo].filter(Boolean).join(' · ') },
+  qbank:           { label:'Question banks & papers', date:r => r.submittedOn || r.dueDate, title:r => (r.kind || '') + ' — ' + (r.courseId ? courseName(r.courseId, true) : r.subject || '') + (r.exam ? ' (' + r.exam + ')' : ''), status:r => r.status, detail:r => [r.questionsRequired && (r.questionsDone || 0) + '/' + r.questionsRequired + ' questions', r.units, r.requestedBy && 'for ' + r.requestedBy, 'due ' + fdate(r.dueDate)].filter(Boolean).join(' · ') },
   repeatExams:     { label:'CIA repeats & exceptions', date:r => r.date || r.allottedOn, title:r => (r.kind || '') + ' — ' + (r.courseId ? courseName(r.courseId, true) : r.subject || ''), status:r => r.status, detail:r => [(r.students || []).length + ' student(s)' + ((r.students || []).length ? ': ' + r.students.map(p => p.name + (p.reason ? ' (' + p.reason + ')' : '')).join(', ') : ''), r.allottedBy && 'allotted by ' + r.allottedBy, r.deadline && 'marks by ' + fdate(r.deadline)].filter(Boolean).join(' · ') },
   classAdjust:     { label:'Class adjustments', date:r => r.date, title:r => courseName(r.courseId, true) + ' — ' + (r.type || ''), status:r => r.type, detail:r => [r.start && r.start + (r.end ? '–' + r.end : ''), r.colleague, r.clashWith && 'clashed with ' + r.clashWith, r.makeupDate && 'make-up ' + fdate(r.makeupDate)].filter(Boolean).join(' · ') },
   leaves:          { label:'Leave & OD', date:r => r.from, title:r => r.type, status:r => r.status, detail:r => [WD.leaveDays(state.data, r, state.settings) + ' day(s)', r.to && r.to !== r.from ? 'till ' + fdate(r.to) : '', r.reason, WD.linkName(state.data, r.link)].filter(Boolean).join(' · ') },
@@ -4711,7 +4870,7 @@ const RS = {
   conferences:     { label:'Conferences & workshops', date:r => r.start, title:r => r.title, status:r => r.status, detail:r => [r.kind, r.role, r.organiser, r.venue, r.paperTitle].filter(Boolean).join(' · ') },
   reviews:         { label:'Peer review & editorial', date:r => r.due || r.invited, title:r => r.journal, status:r => r.status, detail:r => [r.role, r.manuscript, r.round && 'Round ' + r.round].filter(Boolean).join(' · ') },
   collaborations:  { label:'Collaborations', date:r => r.since, title:r => r.name, status:r => r.status, detail:r => [r.institution, r.country, r.kind, r.area, r.outcomes].filter(Boolean).join(' · '), active:true },
-  contacts:        { label:'Researcher contacts', date:() => '', title:r => r.name, status:r => r.relation, detail:r => [r.designation, r.institution, r.expertise].filter(Boolean).join(' · ') },
+  contacts:        { label:'Researcher contacts', date:() => '', title:r => r.name, status:r => r.relation, detail:r => [r.designation, r.institution, INST_SHORT[r.instType], r.expertise, (r.comms || []).length ? (r.comms.length + ' emails / calls logged') : ''].filter(Boolean).join(' · ') },
   metrics:         { label:'Metrics history', date:r => r.date, title:r => r.source, status:() => '', detail:r => `Documents ${r.documents || '–'} · Citations ${r.citations || '–'} · h-index ${r.hIndex || '–'} · i10 ${r.i10 || '–'}` },
   projects:        { label:'Projects & grants', date:r => r.start || r.submitted || r.targetSubmit, end:r => r.end, title:r => r.title, status:r => (PROJECT_GROUPS[projectGroup(r)] || {}).label + ' — ' + r.status, detail:r => [r.agency, r.scheme, 'PI: ' + (r.pi || (r.role === 'PI' ? 'self' : '—')), (r.team || []).length ? 'Team: ' + r.team.map(x => x.name + (x.role ? ' (' + x.role + ')' : '')).join(', ') : '', r.amount ? money(r.amount) + ' sanctioned' : r.amountRequested ? money(r.amountRequested) + ' requested' : '', (r.progress ? r.progress + '% done' : '')].filter(Boolean).join(' · ') },
   fundingCalls:    { label:'Funding calls', date:r => r.lastDate || r.opens || r.announced, title:r => [r.agency, r.title].filter(Boolean).join(' — '), status:r => r.status || 'Watching', detail:r => [r.opens && 'opens ' + fdate(r.opens), r.lastDate && 'last date ' + fdate(r.lastDate), r.submittedOn && 'submitted ' + fdate(r.submittedOn), r.amount && 'up to ' + money(r.amount)].filter(Boolean).join(' · ') },
@@ -4725,7 +4884,7 @@ const RS = {
   holidays:        { label:'Holidays', date:r => r.date, title:r => r.name, status:() => '', detail:r => r.endDate ? 'till ' + fdate(r.endDate) : '' },
   courses:         { label:'Courses', date:() => '', title:r => courseName(r.id), status:r => r.kind, detail:r => [r.classLabel, r.credits && r.credits + ' credits', (WD.byId(state.data, 'semesters', r.semesterId) || {}).name].filter(Boolean).join(' · ') }
 };
-const PERIOD_ORDER = [['Teaching', ['diary','extraClasses','classAdjust']], ['Examinations', ['examDuties','evaluations','repeatExams']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Achievements & certificates', ['achievements']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
+const PERIOD_ORDER = [['Teaching', ['diary','extraClasses','classAdjust']], ['Examinations', ['examDuties','evaluations','qbank','repeatExams']], ['Students & mentoring', ['classLog','mentorMeetings']], ['Events', ['events']], ['Research', ['publications','conferences','reviews','collaborations','plans']], ['Achievements & certificates', ['achievements']], ['Projects & funding', ['projects','fundingCalls']], ['Administration', ['responsibilities','meetings','actions']]];
 function unitTitle(r){ const c = WD.byId(state.data, 'courses', r.courseId); const u = WD.parseUnits(c).find(x => String(x.n) === String(r.unit)); return u ? u.title : ''; }
 function menteeNames(r){ const n = (r.menteeIds || []).map(id => (WD.byId(state.data, 'mentees', id) || {}).name).filter(Boolean); return n.length > 4 ? n.length + ' mentees' : n.join(', '); }
 function inPeriod(cfg, r, from, to){
